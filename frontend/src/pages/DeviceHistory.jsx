@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
 import { useData } from '../context/DataContext';
-import { Search, RotateCcw, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function DeviceHistory() {
   const { deviceHistoryCache, fetchDeviceHistory } = useData();
@@ -13,37 +13,24 @@ export default function DeviceHistory() {
     time: ''
   });
 
-  const [fetching, setFetching] = useState(false);
   const PAGE_LIMIT = 10;
-
   const data = deviceHistoryCache.data;
   const pagination = deviceHistoryCache.pagination;
 
-  useEffect(() => {
-    // If no data cached yet, fetch initial page 1
-    if (data.length === 0) {
-      setFetching(true);
-      fetchDeviceHistory(1, filters).finally(() => setFetching(false));
-    }
-  }, []);
-
   const handleSearch = (e) => {
     e.preventDefault();
-    setFetching(true);
-    fetchDeviceHistory(1, filters).finally(() => setFetching(false));
+    fetchDeviceHistory(1, filters);
   };
 
   const handleReset = () => {
     const empty = { device_id: '', action: '', status: '', time: '' };
     setFilters(empty);
-    setFetching(true);
-    fetchDeviceHistory(1, empty).finally(() => setFetching(false));
+    fetchDeviceHistory(1, empty);
   };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.total_pages) {
-      setFetching(true);
-      fetchDeviceHistory(newPage, filters).finally(() => setFetching(false));
+      fetchDeviceHistory(newPage, filters);
     }
   };
 
@@ -186,11 +173,8 @@ export default function DeviceHistory() {
           </form>
         </div>
 
-        {/* 10-Row Table Card (Ultra-compact row heights for 100% viewport fit) */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
-          {fetching && (
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-blue-500 animate-pulse z-10"></div>
-          )}
+        {/* 10-Row Table Card (Zero-flicker static rendering) */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -202,18 +186,11 @@ export default function DeviceHistory() {
                   <th className="py-1.5 px-4 text-right">Thời gian</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y divide-slate-100 text-xs font-medium text-slate-700 transition-opacity duration-150 ${fetching ? 'opacity-50' : 'opacity-100'}`}>
+              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                 {data.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="py-6 text-center text-slate-400">
-                      {fetching ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
-                          <span>Đang tải danh sách lịch sử...</span>
-                        </div>
-                      ) : (
-                        'Không có lịch sử thao tác nào phù hợp với bộ lọc.'
-                      )}
+                      Không có lịch sử thao tác nào phù hợp với bộ lọc.
                     </td>
                   </tr>
                 ) : (
@@ -242,7 +219,7 @@ export default function DeviceHistory() {
             <div className="flex items-center space-x-1">
               <button
                 onClick={() => handlePageChange(pagination.current_page - 1)}
-                disabled={pagination.current_page <= 1 || fetching}
+                disabled={pagination.current_page <= 1}
                 className="p-1 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -267,7 +244,7 @@ export default function DeviceHistory() {
 
               <button
                 onClick={() => handlePageChange(pagination.current_page + 1)}
-                disabled={pagination.current_page >= pagination.total_pages || fetching}
+                disabled={pagination.current_page >= pagination.total_pages}
                 className="p-1 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
               >
                 <ChevronRight className="w-3.5 h-3.5" />

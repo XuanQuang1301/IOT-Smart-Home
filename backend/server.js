@@ -22,7 +22,7 @@ const wss = new WebSocket.Server({ server });
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-  console.log('🔌 Client connected to WebSocket');
+  console.log('Client connected to WebSocket');
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'WebSocket connected to Smart Home Server' }));
 
   ws.on('close', () => {
@@ -59,7 +59,7 @@ app.get('/api/health', (req, res) => {
 
 // Start Server & Init DB
 server.listen(PORT, async () => {
-  console.log(`🌐 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
   await initDatabase();
   startSensorSimulator(broadcast);
 });

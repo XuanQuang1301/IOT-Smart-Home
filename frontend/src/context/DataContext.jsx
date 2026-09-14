@@ -6,7 +6,7 @@ const API_BASE = 'http://localhost:5000/api/v1';
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  // Realtime Sensor Cache
+  // Realtime Sensor State
   const [sensors, setSensors] = useState({
     temperature: 28.5,
     humidity: 65,
@@ -14,28 +14,84 @@ export function DataProvider({ children }) {
     timestamp: new Date().toISOString()
   });
 
-  // Chart Data Cache
+  // Chart Data State
   const [chartData, setChartData] = useState([]);
 
-  // Devices Status Cache
+  // Devices Status State
   const [devices, setDevices] = useState([
     { id: 1, name: 'Đèn 1', state: 'ON' },
     { id: 2, name: 'Đèn 2', state: 'OFF' }
   ]);
 
-  // Persistent Cache for Sensor History Page
+  // Sensor History State
   const [sensorHistoryCache, setSensorHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
     appliedFilters: { sensor_id: '', sensor_type: '', value: '', time: '' }
   });
 
-  // Persistent Cache for Device History Page
+  // Device History State
   const [deviceHistoryCache, setDeviceHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
     appliedFilters: { device_id: '', action: '', status: '', time: '' }
   });
+
+  // Silent Background Fetch for Sensor History
+  const fetchSensorHistory = useCallback(async (page = 1, filters = {}) => {
+    try {
+      const params = {
+        page,
+        limit: 10,
+        ...(filters.sensor_id && { sensor_id: filters.sensor_id }),
+        ...(filters.sensor_type && { sensor_type: filters.sensor_type }),
+        ...(filters.value && { value: filters.value }),
+        ...(filters.time && { time: filters.time })
+      };
+
+      const res = await axios.get(`${API_BASE}/sensor/history`, { params });
+      if (res.data) {
+        setSensorHistoryCache({
+          data: res.data.data || [],
+          pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
+          appliedFilters: filters
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching sensor history context:', err);
+    }
+  }, []);
+
+  // Silent Background Fetch for Device History
+  const fetchDeviceHistory = useCallback(async (page = 1, filters = {}) => {
+    try {
+      const params = {
+        page,
+        limit: 10,
+        ...(filters.device_id && { device_id: filters.device_id }),
+        ...(filters.action && { action: filters.action }),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.time && { time: filters.time })
+      };
+
+      const res = await axios.get(`${API_BASE}/actions/history`, { params });
+      if (res.data) {
+        setDeviceHistoryCache({
+          data: res.data.data || [],
+          pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
+          appliedFilters: filters
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching device history context:', err);
+    }
+  }, []);
+
+  // Pre-fetch Page 1 Data on App Startup so tabs open instantly
+  useEffect(() => {
+    fetchSensorHistory(1, {});
+    fetchDeviceHistory(1, {});
+  }, [fetchSensorHistory, fetchDeviceHistory]);
 
   // Persistent Single WebSocket Connection
   useEffect(() => {
@@ -44,10 +100,6 @@ export function DataProvider({ children }) {
 
     const connect = () => {
       ws = new WebSocket('ws://localhost:5000');
-
-      ws.onopen = () => {
-        console.log('⚡ Monorepo Global WebSocket Connected');
-      };
 
       ws.onmessage = (event) => {
         try {
@@ -90,56 +142,6 @@ export function DataProvider({ children }) {
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
-  }, []);
-
-  // Fetch Sensor History (10 rows per page)
-  const fetchSensorHistory = useCallback(async (page = 1, filters = {}) => {
-    try {
-      const params = {
-        page,
-        limit: 10,
-        ...(filters.sensor_id && { sensor_id: filters.sensor_id }),
-        ...(filters.sensor_type && { sensor_type: filters.sensor_type }),
-        ...(filters.value && { value: filters.value }),
-        ...(filters.time && { time: filters.time })
-      };
-
-      const res = await axios.get(`${API_BASE}/sensor/history`, { params });
-      if (res.data) {
-        setSensorHistoryCache({
-          data: res.data.data || [],
-          pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
-          appliedFilters: filters
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching sensor history context:', err);
-    }
-  }, []);
-
-  // Fetch Device History (10 rows per page)
-  const fetchDeviceHistory = useCallback(async (page = 1, filters = {}) => {
-    try {
-      const params = {
-        page,
-        limit: 10,
-        ...(filters.device_id && { device_id: filters.device_id }),
-        ...(filters.action && { action: filters.action }),
-        ...(filters.status && { status: filters.status }),
-        ...(filters.time && { time: filters.time })
-      };
-
-      const res = await axios.get(`${API_BASE}/actions/history`, { params });
-      if (res.data) {
-        setDeviceHistoryCache({
-          data: res.data.data || [],
-          pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
-          appliedFilters: filters
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching device history context:', err);
-    }
   }, []);
 
   return (
