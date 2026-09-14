@@ -1,7 +1,59 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import { useData } from '../context/DataContext';
-import { Search, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+
+function SortHeader({ title, sortKey, sortConfig, onSort, alignRight = false, className = '' }) {
+  const isActive = sortConfig.key === sortKey;
+  const isAsc = isActive && sortConfig.direction === 'asc';
+  const isDesc = isActive && sortConfig.direction === 'desc';
+
+  return (
+    <th
+      onClick={(e) => {
+        e.preventDefault();
+        onSort(sortKey);
+      }}
+      className={`py-2 px-4 cursor-pointer select-none hover:bg-slate-100/70 transition-colors group ${
+        alignRight ? 'text-right' : 'text-left'
+      } ${className}`}
+      title={`Sắp xếp theo ${title}`}
+    >
+      <div className={`inline-flex items-center space-x-1 ${alignRight ? 'justify-end w-full' : ''}`}>
+        <span className={`transition-colors ${isActive ? 'text-blue-600 font-extrabold' : 'group-hover:text-slate-700'}`}>
+          {title}
+        </span>
+        <div className="flex flex-col items-center justify-center space-y-[-3px] ml-1">
+          <svg
+            className={`w-2.5 h-2.5 ${
+              isAsc ? 'text-blue-600 font-extrabold scale-110' : 'text-slate-300 group-hover:text-slate-400'
+            }`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 15l-6-6-6 6" />
+          </svg>
+          <svg
+            className={`w-2.5 h-2.5 ${
+              isDesc ? 'text-blue-600 font-extrabold scale-110' : 'text-slate-300 group-hover:text-slate-400'
+            }`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </div>
+    </th>
+  );
+}
 
 export default function DeviceHistory() {
   const { deviceHistoryCache, fetchDeviceHistory } = useData();
@@ -77,35 +129,74 @@ export default function DeviceHistory() {
     );
   };
 
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: null });
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === 'desc') return { key, direction: 'asc' };
+        if (prev.direction === 'asc') return { key: '', direction: null };
+        return { key, direction: 'desc' };
+      }
+      return { key, direction: 'desc' };
+    });
+  };
+
+  const sortedData = React.useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) return data;
+    return [...data].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      if (sortConfig.key === 'device_id') {
+        aVal = parseInt(aVal, 10) || 0;
+        bVal = parseInt(bVal, 10) || 0;
+      } else if (sortConfig.key === 'device_name') {
+        aVal = (a.device_name || `Thiết bị ${a.device_id}`).toLowerCase();
+        bVal = (b.device_name || `Thiết bị ${b.device_id}`).toLowerCase();
+      } else if (sortConfig.key === 'created_at') {
+        aVal = new Date(aVal).getTime() || 0;
+        bVal = new Date(bVal).getTime() || 0;
+      } else if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal || '').toLowerCase();
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [data, sortConfig]);
+
   const startRecord = (pagination.current_page - 1) * PAGE_LIMIT + (data.length > 0 ? 1 : 0);
   const endRecord = (pagination.current_page - 1) * PAGE_LIMIT + data.length;
 
   return (
-    <div className="flex-1 p-5 overflow-y-auto max-h-screen flex flex-col justify-between">
+    <div className="h-full p-5 overflow-y-auto flex flex-col justify-between">
       <div>
         <Header title="Lịch Sử Thiết Bị" subtitle="Bản ghi chi tiết các hành động bật/tắt thiết bị" />
 
         {/* Compact Search & Filter Form Card */}
-        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm mb-3">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-4">
           <form onSubmit={handleSearch}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">ID</label>
+                <label className="block text-xs font-bold text-slate-900 mb-1">ID</label>
                 <input
                   type="text"
                   placeholder="Nhập ID"
                   value={filters.device_id}
                   onChange={(e) => setFilters({ ...filters, device_id: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Thiết bị</label>
+                <label className="block text-xs font-bold text-slate-900 mb-1">Thiết bị</label>
                 <select
                   value={filters.device_id}
                   onChange={(e) => setFilters({ ...filters, device_id: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
                 >
                   <option value="">Chọn thiết bị</option>
                   <option value="1">Đèn 1</option>
@@ -114,11 +205,11 @@ export default function DeviceHistory() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Hành động</label>
+                <label className="block text-xs font-bold text-slate-900 mb-1">Hành động</label>
                 <select
                   value={filters.action}
                   onChange={(e) => setFilters({ ...filters, action: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
                 >
                   <option value="">Chọn hành động</option>
                   <option value="TURN_ON">TURN_ON</option>
@@ -127,13 +218,13 @@ export default function DeviceHistory() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Trạng thái</label>
+                <label className="block text-xs font-bold text-slate-900 mb-1">Trạng thái</label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
                 >
                   <option value="">Chọn trạng thái</option>
                   <option value="SUCCESS">Thành công</option>
@@ -142,65 +233,63 @@ export default function DeviceHistory() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Thời gian</label>
+                <label className="block text-xs font-bold text-slate-900 mb-1">Thời gian</label>
                 <input
                   type="text"
-                  placeholder="dd/mm/yyyy hh:mm:ss"
+                  placeholder="yyyy/mm/dd hh:mm:ss"
                   value={filters.time}
                   onChange={(e) => setFilters({ ...filters, time: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all font-mono"
                 />
               </div>
 
               <div className="flex items-center space-x-2 justify-end">
                 <button
                   type="submit"
-                  className="flex-1 md:flex-none flex items-center justify-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-3 py-1 rounded-lg shadow-sm text-xs transition-all"
+                  className="flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 text-white font-bold px-4 py-1.5 rounded-xl shadow-sm text-xs transition-all cursor-pointer"
                 >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>Tìm kiếm</span>
+                  Tìm kiếm
                 </button>
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="flex items-center justify-center space-x-1 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-3 py-1 rounded-lg text-xs transition-all"
+                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Đặt lại</span>
+                  Đặt lại
                 </button>
               </div>
             </div>
           </form>
         </div>
 
-        {/* 10-Row Table Card (Zero-flicker static rendering) */}
+        {/* 10-Row Table Card (No Icons) */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold tracking-wider text-slate-400 uppercase bg-slate-50/50">
-                  <th className="py-1.5 px-4">Device ID</th>
-                  <th className="py-1.5 px-4">Tên Thiết bị</th>
-                  <th className="py-1.5 px-4">Hành động</th>
-                  <th className="py-1.5 px-4">Trạng thái</th>
-                  <th className="py-1.5 px-4 text-right">Thời gian</th>
+                  <SortHeader title="Device ID" sortKey="device_id" sortConfig={sortConfig} onSort={handleSort} className="w-[15%]" />
+                  <SortHeader title="Tên Thiết bị" sortKey="device_name" sortConfig={sortConfig} onSort={handleSort} className="w-[25%]" />
+                  <SortHeader title="Hành động" sortKey="action" sortConfig={sortConfig} onSort={handleSort} className="w-[20%]" />
+                  <SortHeader title="Trạng thái" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="w-[20%]" />
+                  <SortHeader title="Thời gian" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} alignRight={true} className="w-[20%]" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {data.length === 0 ? (
+                {sortedData.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="py-6 text-center text-slate-400">
                       Không có lịch sử thao tác nào phù hợp với bộ lọc.
                     </td>
                   </tr>
                 ) : (
-                  data.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-[7px] px-4 font-mono text-slate-600">{row.device_id}</td>
-                      <td className="py-[7px] px-4 font-bold text-slate-800">{row.device_name || `Thiết bị ${row.device_id}`}</td>
-                      <td className="py-[7px] px-4">{renderActionBadge(row.action)}</td>
-                      <td className="py-[7px] px-4">{renderStatusBadge(row.status)}</td>
-                      <td className="py-[7px] px-4 text-right font-mono text-[11px] text-slate-500">
+                  sortedData.map((row, idx) => (
+                    <tr key={row.id || idx} className="hover:bg-slate-50/70">
+                      <td className="py-[7px] px-4 font-mono text-slate-600 truncate">{row.device_id}</td>
+                      <td className="py-[7px] px-4 font-bold text-slate-800 truncate">{row.device_name || `Thiết bị ${row.device_id}`}</td>
+                      <td className="py-[7px] px-4 truncate">{renderActionBadge(row.action)}</td>
+                      <td className="py-[7px] px-4 truncate">{renderStatusBadge(row.status)}</td>
+                      <td className="py-[7px] px-4 text-right font-mono text-[11px] text-slate-500 truncate">
                         {formatTimestamp(row.created_at)}
                       </td>
                     </tr>
@@ -210,7 +299,7 @@ export default function DeviceHistory() {
             </table>
           </div>
 
-          {/* Table Footer Pagination */}
+          {/* Table Footer Pagination (Text Buttons) */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 p-2 px-4 border-t border-slate-100 text-[11px] text-slate-500">
             <div>
               Hiển thị <span className="font-semibold text-slate-700">{startRecord}-{endRecord}</span> trong số <span className="font-semibold text-slate-700">{pagination.total_records}</span> dòng
@@ -220,9 +309,9 @@ export default function DeviceHistory() {
               <button
                 onClick={() => handlePageChange(pagination.current_page - 1)}
                 disabled={pagination.current_page <= 1}
-                className="p-1 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+                className="px-2 py-0.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 font-semibold text-[11px]"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                Trước
               </button>
 
               {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
@@ -245,9 +334,9 @@ export default function DeviceHistory() {
               <button
                 onClick={() => handlePageChange(pagination.current_page + 1)}
                 disabled={pagination.current_page >= pagination.total_pages}
-                className="p-1 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+                className="px-2 py-0.5 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 font-semibold text-[11px]"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                Sau
               </button>
             </div>
           </div>

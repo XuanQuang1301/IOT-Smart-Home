@@ -8,7 +8,7 @@ let currentLight = 720;
 function startSensorSimulator(broadcastFn) {
   if (simulatorInterval) return;
 
-  console.log('🚀 Sensor Simulator started (generating readings every 2.5s)...');
+  console.log('Sensor Simulator started (generating readings every 2.5s)...');
 
   simulatorInterval = setInterval(async () => {
     try {
@@ -51,7 +51,7 @@ function startSensorSimulator(broadcastFn) {
         });
       }
     } catch (error) {
-      console.error('⚠️ Error in sensor simulator:', error.message);
+      console.error('Error in sensor simulator:', error.message);
     }
   }, 2500);
 }

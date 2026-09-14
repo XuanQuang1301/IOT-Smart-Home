@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, User } from 'lucide-react';
 
 export default function Header({ title = 'Hệ Thống IoT', subtitle = 'Theo dõi và điều khiển thiết bị thời gian thực' }) {
   const [timeStr, setTimeStr] = useState('');
@@ -7,7 +6,9 @@ export default function Header({ title = 'Hệ Thống IoT', subtitle = 'Theo d�
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      setTimeStr(now.toTimeString().split(' ')[0]);
+      const time = now.toLocaleTimeString('vi-VN', { hour12: false });
+      const date = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      setTimeStr(`${time} - ${date}`);
     };
     updateClock();
     const interval = setInterval(updateClock, 1000);
@@ -22,18 +23,15 @@ export default function Header({ title = 'Hệ Thống IoT', subtitle = 'Theo d�
       </div>
 
       <div className="flex items-center space-x-3 self-end md:self-auto">
-        {/* Clock Pill */}
-        <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-mono text-slate-600">
-          <Clock className="w-3.5 h-3.5 text-blue-500" />
-          <span>{timeStr || '14:32:05'}</span>
+        {/* Realtime Clock Pill */}
+        <div className="bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-mono text-slate-600 font-semibold flex items-center space-x-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+          <span>{timeStr || 'Đang tải...'}</span>
         </div>
 
         {/* User Pill */}
-        <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-semibold text-slate-700">
-          <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px]">
-            <User className="w-2.5 h-2.5" />
-          </div>
-          <span>Xuân Quang</span>
+        <div className="bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-semibold text-slate-700">
+          Xuân Quang
         </div>
       </div>
     </header>

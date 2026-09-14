@@ -1,41 +1,37 @@
 import React from 'react';
 import Header from '../components/Header';
-import { GitBranch, Rocket, FileText, ChevronRight, Layers } from 'lucide-react';
+import avatarImg from '../assets/avatar.png';
 
 export default function Profile() {
   const links = [
     {
       title: 'GitHub Repository',
-      url: 'github.com/dangxuanquang/iot-dashboard',
-      href: 'https://github.com/dangxuanquang/iot-dashboard',
-      icon: GitBranch,
-      color: 'bg-slate-50 text-slate-700'
+      url: 'https://github.com/XuanQuang1301/IOT-Smart-Home',
+      href: 'https://github.com/XuanQuang1301/IOT-Smart-Home',
+      badge: 'Git'
     },
     {
       title: 'Figma Design File',
       url: 'figma.com/file/contra-labs-iot',
-      href: 'https://figma.com',
-      icon: Layers,
-      color: 'bg-orange-50 text-orange-500'
+      href: 'https://www.figma.com/design/bp3cfY9WkXlfF5lN4PreqN/Untitled?node-id=0-1&t=FEGKawTyiA9gA240-1',
+      badge: 'Figma'
     },
     {
       title: 'Postman API Docs',
       url: 'postman.com/workspace/contra-iot',
       href: 'https://postman.com',
-      icon: Rocket,
-      color: 'bg-orange-50 text-orange-600'
+      badge: 'API'
     },
     {
       title: 'Báo cáo tiểu luận',
       url: 'drive.google.com/share/baocao-iot.pdf',
       href: 'https://drive.google.com',
-      icon: FileText,
-      color: 'bg-blue-50 text-blue-500'
+      badge: 'PDF'
     }
   ];
 
   return (
-    <div className="flex-1 p-5 overflow-y-auto min-h-screen flex flex-col justify-between animate-fade-in">
+    <div className="h-full p-5 overflow-y-auto flex flex-col justify-between">
       <div>
         <Header title="Profile" subtitle="Thông tin cá nhân và tài liệu liên quan đến dự án" />
 
@@ -44,9 +40,9 @@ export default function Profile() {
             {/* Avatar & Basic Info */}
             <div className="flex flex-col items-center text-center pb-5 border-b border-slate-100">
               <div className="relative mb-3">
-                <div className="w-16 h-16 rounded-full p-1 ring-2 ring-blue-500/20 overflow-hidden bg-slate-100">
+                <div className="w-20 h-20 rounded-full p-1 ring-2 ring-blue-500/20 overflow-hidden bg-slate-100 shadow-sm">
                   <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"
+                    src={avatarImg}
                     alt="Đặng Xuân Quang"
                     className="w-full h-full object-cover rounded-full"
                     onError={(e) => {
@@ -75,36 +71,30 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Project & Document Links Section */}
+            {/* Project & Document Links Section (No Icons) */}
             <div className="pt-4">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">LIÊN KẾT DỰ ÁN & TÀI LIỆU</h3>
 
               <div className="space-y-2">
-                {links.map((link, idx) => {
-                  const Icon = link.icon;
-                  return (
-                    <a
-                      key={idx}
-                      href={link.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100 hover:bg-slate-100/80 hover:border-slate-200 transition-all group"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${link.color}`}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                            {link.title}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{link.url}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                    </a>
-                  );
-                })}
+                {links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50/70 border border-slate-100 hover:bg-slate-100/80 hover:border-slate-200 transition-all group"
+                  >
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                        {link.title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{link.url}</p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-md group-hover:border-blue-300 group-hover:text-blue-600">
+                      {link.badge}
+                    </span>
+                  </a>
+                ))}
               </div>
             </div>
           </div>

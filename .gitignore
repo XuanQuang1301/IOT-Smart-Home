@@ -1,1 +1,14 @@
-node_modules
+# Node modules
+node_modules/
+
+# Environment variables (NEVER COMMIT SENSITIVE CREDS / ENV CONFIG)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs & caches
+dist/
+.turbo/
+.cache/
+*.log

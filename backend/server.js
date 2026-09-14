@@ -6,8 +6,8 @@ require('dotenv').config();
 
 const { initDatabase } = require('./config/db');
 const { getRealtimeSensor, getSensorHistory } = require('./controllers/sensorController');
-const { getDevicesStatus, controlDevice, getActionsHistory, setBroadcastFn } = require('./controllers/deviceController');
-const { startSensorSimulator } = require('./services/sensorSimulator');
+const { getDevicesStatus, controlDevice, getActionsHistory } = require('./controllers/deviceController');
+const { initMqtt } = require('./services/mqttService');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,7 +22,7 @@ const wss = new WebSocket.Server({ server });
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-  console.log('Client connected to WebSocket');
+  console.log('🔌 Client connected to WebSocket');
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'WebSocket connected to Smart Home Server' }));
 
   ws.on('close', () => {
@@ -40,9 +40,6 @@ function broadcast(messageObj) {
   });
 }
 
-// Inject broadcast fn into deviceController
-setBroadcastFn(broadcast);
-
 // API Routes
 app.get('/api/v1/sensor/realtime', getRealtimeSensor);
 app.get('/api/v1/sensors/history', getSensorHistory);
@@ -57,9 +54,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', serverTime: new Date().toISOString() });
 });
 
-// Start Server & Init DB
+// Start Server, Init DB & MQTT Service
 server.listen(PORT, async () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🌐 Backend Server running on http://localhost:${PORT}`);
   await initDatabase();
-  startSensorSimulator(broadcast);
+  initMqtt(broadcast);
 });

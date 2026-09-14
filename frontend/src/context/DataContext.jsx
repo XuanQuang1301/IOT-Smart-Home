@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000/api/v1';
+const API_BASE = '/api/v1';
 
 const DataContext = createContext(null);
 
@@ -87,8 +87,24 @@ export function DataProvider({ children }) {
     }
   }, []);
 
-  // Pre-fetch Page 1 Data on App Startup so tabs open instantly
+  // Pre-fetch Page 1 Data and Realtime status on App Startup
   useEffect(() => {
+    axios.get(`${API_BASE}/sensor/realtime`)
+      .then((res) => {
+        if (res.data && res.data.data) {
+          setSensors(res.data.data);
+        }
+      })
+      .catch(console.error);
+
+    axios.get(`${API_BASE}/devices/status`)
+      .then((res) => {
+        if (res.data && res.data.data) {
+          setDevices(res.data.data);
+        }
+      })
+      .catch(console.error);
+
     fetchSensorHistory(1, {});
     fetchDeviceHistory(1, {});
   }, [fetchSensorHistory, fetchDeviceHistory]);
@@ -99,7 +115,13 @@ export function DataProvider({ children }) {
     let reconnectTimeout = null;
 
     const connect = () => {
-      ws = new WebSocket('ws://localhost:5000');
+      const isHttps = window.location.protocol === 'https:';
+      const wsProtocol = isHttps ? 'wss:' : 'ws:';
+      const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'ws://localhost:5000'
+        : `${wsProtocol}//${window.location.host}/ws`;
+
+      ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
         try {
@@ -108,17 +130,20 @@ export function DataProvider({ children }) {
             const newData = msg.data;
             setSensors(newData);
 
-            const timeStr = new Date(newData.timestamp).toTimeString().split(' ')[0];
+            const timeStr = new Date(newData.timestamp).toLocaleTimeString('vi-VN', { hour12: false });
             setChartData((prev) => {
-              const updated = [
-                ...prev,
-                {
-                  time: timeStr,
-                  temperature: newData.temperature,
-                  humidity: newData.humidity,
-                  light: newData.light
-                }
-              ];
+              const newPoint = {
+                time: timeStr,
+                temperature: newData.temperature,
+                humidity: newData.humidity,
+                light: newData.light
+              };
+              if (prev.length > 0 && prev[prev.length - 1].time === timeStr) {
+                const updated = [...prev];
+                updated[updated.length - 1] = newPoint;
+                return updated;
+              }
+              const updated = [...prev, newPoint];
               return updated.slice(-20);
             });
           } else if (msg.type === 'DEVICE_UPDATE') {
