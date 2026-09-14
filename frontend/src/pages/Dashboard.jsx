@@ -1,100 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/Header';
+import { useData } from '../context/DataContext';
 import { Thermometer, CloudRain, Sun, Lightbulb, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 
 const API_BASE = 'http://localhost:5000/api/v1';
 
 export default function Dashboard() {
-  const [sensors, setSensors] = useState({
-    temperature: 28.5,
-    humidity: 65,
-    light: 720,
-    timestamp: new Date().toISOString()
-  });
-
-  const [chartData, setChartData] = useState([]);
-  const [devices, setDevices] = useState([
-    { id: 1, name: 'Đèn 1', state: 'ON' },
-    { id: 2, name: 'Đèn 2', state: 'OFF' }
-  ]);
+  const { sensors, chartData, setChartData, devices, setDevices } = useData();
   const [controlling, setControlling] = useState({});
 
-  // Fetch Initial Data & Setup WebSocket
   useEffect(() => {
-    fetchRealtimeData();
-    fetchChartData();
-    fetchDevicesStatus();
-
-    // WebSocket Real-time listener
-    const ws = new WebSocket('ws://localhost:5000');
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'SENSOR_UPDATE') {
-          const newData = msg.data;
-          setSensors(newData);
-
-          // Update chart dataset in real-time
-          const timeStr = new Date(newData.timestamp).toTimeString().split(' ')[0];
-          setChartData((prev) => {
-            const updated = [...prev, {
-              time: timeStr,
-              temperature: newData.temperature,
-              humidity: newData.humidity,
-              light: newData.light
-            }];
-            return updated.slice(-20); // keep last 20 points
-          });
-        } else if (msg.type === 'DEVICE_UPDATE') {
-          setDevices((prev) =>
-            prev.map((d) => (d.id === msg.data.device_id ? { ...d, state: msg.data.state } : d))
-          );
-        }
-      } catch (err) {
-        console.error('WS parse error:', err);
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  const fetchRealtimeData = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/sensor/realtime`);
-      if (res.data && res.data.data) {
-        setSensors(res.data.data);
-      }
-    } catch (err) {
-      console.error('Error loading realtime sensor:', err);
+    // If chartData is empty, fetch initial 20 items
+    if (chartData.length === 0) {
+      axios.get(`${API_BASE}/sensors/history?deviceId=1&limit=20`)
+        .then((res) => {
+          if (res.data && res.data.data) {
+            setChartData(res.data.data);
+          }
+        })
+        .catch(console.error);
     }
-  };
-
-  const fetchChartData = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/sensors/history?deviceId=1&limit=20`);
-      if (res.data && res.data.data) {
-        setChartData(res.data.data);
-      }
-    } catch (err) {
-      console.error('Error loading chart data:', err);
-    }
-  };
-
-  const fetchDevicesStatus = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/devices/status`);
-      if (res.data && res.data.data) {
-        setDevices(res.data.data);
-      }
-    } catch (err) {
-      console.error('Error loading devices status:', err);
-    }
-  };
+  }, [chartData.length, setChartData]);
 
   // Toggle Device handler
   const handleToggleDevice = async (device) => {
@@ -126,12 +54,12 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto min-h-screen flex flex-col justify-between animate-fade-in">
+    <div className="flex-1 p-6 overflow-y-auto max-h-screen flex flex-col justify-between">
       <div>
         <Header title="Hệ Thống IoT" subtitle="Theo dõi và điều khiển thiết bị thời gian thực" />
 
         {/* 3 Top Sensor Widget Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Nhiệt độ */}
           <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex justify-between items-center">
             <div>
@@ -187,10 +115,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Sensor Trend Chart Section (Height increased to h-56 for a larger, clearer view) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-6">
+        {/* Sensor Trend Chart Section */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-5">
           <h2 className="text-sm font-bold text-slate-800 mb-3">Xu hướng Cảm biến</h2>
-          <div className="h-56 w-full">
+          <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 15, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -200,7 +128,7 @@ export default function Dashboard() {
                   contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #f1f5f9', fontSize: '12px', boxShadow: '0 8px 12px -3px rgba(0,0,0,0.08)' }}
                 />
                 <Legend
-                  wrapperStyle={{ paddingTop: '12px', fontSize: '11px' }}
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                   iconType="line"
                 />
                 <Line name="Nhiệt độ (°C)" type="monotone" dataKey="temperature" stroke="#f59e0b" strokeWidth={2.2} dot={false} activeDot={{ r: 4 }} />
@@ -211,8 +139,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Control Devices Section (Pushed down slightly with larger chart space) */}
-        <div className="mt-2">
+        {/* Control Devices Section */}
+        <div>
           <h2 className="text-sm font-bold text-slate-800 mb-3">Thiết bị điều khiển</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {devices.map((device) => {

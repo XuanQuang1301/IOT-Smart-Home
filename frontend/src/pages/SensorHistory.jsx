@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Header from '../components/Header';
+import { useData } from '../context/DataContext';
 import { Search, RotateCcw, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000/api/v1';
-
 export default function SensorHistory() {
+  const { sensorHistoryCache, fetchSensorHistory } = useData();
+
   const [filters, setFilters] = useState({
     sensor_id: '',
     sensor_type: '',
@@ -13,67 +13,37 @@ export default function SensorHistory() {
     time: ''
   });
 
-  const [appliedFilters, setAppliedFilters] = useState({
-    sensor_id: '',
-    sensor_type: '',
-    value: '',
-    time: ''
-  });
-
-  const [data, setData] = useState([]);
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    total_pages: 1,
-    total_records: 0
-  });
   const [fetching, setFetching] = useState(false);
+  const PAGE_LIMIT = 10;
 
-  const PAGE_LIMIT = 8;
+  const data = sensorHistoryCache.data;
+  const pagination = sensorHistoryCache.pagination;
 
   useEffect(() => {
-    fetchHistory(1);
-  }, [appliedFilters]);
-
-  const fetchHistory = async (page = 1) => {
-    setFetching(true);
-    try {
-      const params = {
-        page,
-        limit: PAGE_LIMIT,
-        ...(appliedFilters.sensor_id && { sensor_id: appliedFilters.sensor_id }),
-        ...(appliedFilters.sensor_type && { sensor_type: appliedFilters.sensor_type }),
-        ...(appliedFilters.value && { value: appliedFilters.value }),
-        ...(appliedFilters.time && { time: appliedFilters.time })
-      };
-
-      const res = await axios.get(`${API_BASE}/sensor/history`, { params });
-      if (res.data) {
-        setData(res.data.data || []);
-        if (res.data.pagination) {
-          setPagination(res.data.pagination);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching sensor history:', err);
-    } finally {
-      setFetching(false);
+    // If no data cached yet, fetch initial page 1
+    if (data.length === 0) {
+      setFetching(true);
+      fetchSensorHistory(1, filters).finally(() => setFetching(false));
     }
-  };
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setAppliedFilters({ ...filters });
+    setFetching(true);
+    fetchSensorHistory(1, filters).finally(() => setFetching(false));
   };
 
   const handleReset = () => {
     const empty = { sensor_id: '', sensor_type: '', value: '', time: '' };
     setFilters(empty);
-    setAppliedFilters(empty);
+    setFetching(true);
+    fetchSensorHistory(1, empty).finally(() => setFetching(false));
   };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.total_pages) {
-      fetchHistory(newPage);
+      setFetching(true);
+      fetchSensorHistory(newPage, filters).finally(() => setFetching(false));
     }
   };
 
@@ -93,15 +63,15 @@ export default function SensorHistory() {
     switch (sensorType) {
       case 'TEMPERATURE':
       case 'Nhiệt độ':
-        return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 rounded-full text-xs font-semibold">Nhiệt độ</span>;
+        return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[11px] font-semibold">Nhiệt độ</span>;
       case 'HUMIDITY':
       case 'Độ ẩm':
-        return <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">Độ ẩm</span>;
+        return <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[11px] font-semibold">Độ ẩm</span>;
       case 'LIGHT':
       case 'Ánh sáng':
-        return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold">Ánh sáng</span>;
+        return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-semibold">Ánh sáng</span>;
       default:
-        return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{sensorType}</span>;
+        return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[11px] font-semibold">{sensorType}</span>;
     }
   };
 
@@ -109,14 +79,14 @@ export default function SensorHistory() {
   const endRecord = (pagination.current_page - 1) * PAGE_LIMIT + data.length;
 
   return (
-    <div className="flex-1 p-5 overflow-y-auto max-h-screen flex flex-col justify-between animate-fade-in">
+    <div className="flex-1 p-5 overflow-y-auto max-h-screen flex flex-col justify-between">
       <div>
         <Header title="Lịch Sử Cảm Biến" subtitle="Tra cứu dữ liệu đo đạc chi tiết của hệ thống" />
 
         {/* Compact Search & Filter Form Card */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm mb-3">
+        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm mb-3">
           <form onSubmit={handleSearch}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
               <div>
                 <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">SensorID</label>
                 <input
@@ -124,7 +94,7 @@ export default function SensorHistory() {
                   placeholder="Nhập SensorID"
                   value={filters.sensor_id}
                   onChange={(e) => setFilters({ ...filters, sensor_id: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                 />
               </div>
 
@@ -133,7 +103,7 @@ export default function SensorHistory() {
                 <select
                   value={filters.sensor_type}
                   onChange={(e) => setFilters({ ...filters, sensor_type: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">Chọn loại cảm biến</option>
                   <option value="TEMPERATURE">Nhiệt độ</option>
@@ -149,12 +119,12 @@ export default function SensorHistory() {
                   placeholder="Nhập giá trị"
                   value={filters.value}
                   onChange={(e) => setFilters({ ...filters, value: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
               <div className="md:col-span-2">
                 <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Thời gian</label>
                 <input
@@ -162,14 +132,14 @@ export default function SensorHistory() {
                   placeholder="dd/mm/yyyy hh:mm:ss"
                   value={filters.time}
                   onChange={(e) => setFilters({ ...filters, time: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                 />
               </div>
 
               <div className="flex items-center space-x-2 justify-end">
                 <button
                   type="submit"
-                  className="flex-1 md:flex-none flex items-center justify-center space-x-1.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-1.5 rounded-xl shadow-sm text-xs transition-all"
+                  className="flex-1 md:flex-none flex items-center justify-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-3 py-1 rounded-lg shadow-sm text-xs transition-all"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Tìm kiếm</span>
@@ -177,7 +147,7 @@ export default function SensorHistory() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="flex items-center justify-center space-x-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-3 py-1.5 rounded-xl text-xs transition-all"
+                  className="flex items-center justify-center space-x-1 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-3 py-1 rounded-lg text-xs transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Đặt lại</span>
@@ -187,7 +157,7 @@ export default function SensorHistory() {
           </form>
         </div>
 
-        {/* History Data Table Card (8 records per page - fits 100% inside viewport) */}
+        {/* 10-Row Table Card (Ultra-compact row heights for 100% viewport fit) */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
           {fetching && (
             <div className="absolute inset-x-0 top-0 h-0.5 bg-blue-500 animate-pulse z-10"></div>
@@ -196,19 +166,19 @@ export default function SensorHistory() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold tracking-wider text-slate-400 uppercase bg-slate-50/50">
-                  <th className="py-2 px-4">SENSOR ID</th>
-                  <th className="py-2 px-4">Loại cảm biến</th>
-                  <th className="py-2 px-4">Giá trị</th>
-                  <th className="py-2 px-4 text-right">Thời gian</th>
+                  <th className="py-1.5 px-4">SENSOR ID</th>
+                  <th className="py-1.5 px-4">Loại cảm biến</th>
+                  <th className="py-1.5 px-4">Giá trị</th>
+                  <th className="py-1.5 px-4 text-right">Thời gian</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y divide-slate-100 text-xs font-medium text-slate-700 transition-opacity duration-200 ${fetching ? 'opacity-60' : 'opacity-100'}`}>
+              <tbody className={`divide-y divide-slate-100 text-xs font-medium text-slate-700 transition-opacity duration-150 ${fetching ? 'opacity-50' : 'opacity-100'}`}>
                 {data.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="py-8 text-center text-slate-400">
+                    <td colSpan="4" className="py-6 text-center text-slate-400">
                       {fetching ? (
                         <div className="flex items-center justify-center space-x-2">
-                          <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
                           <span>Đang tải dữ liệu...</span>
                         </div>
                       ) : (
@@ -219,12 +189,12 @@ export default function SensorHistory() {
                 ) : (
                   data.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-2 px-4 font-mono text-slate-600">{row.sensor_id}</td>
-                      <td className="py-2 px-4">{renderBadge(row.sensor_type || row.name)}</td>
-                      <td className="py-2 px-4 font-bold text-slate-800">
+                      <td className="py-[7px] px-4 font-mono text-slate-600">{row.sensor_id}</td>
+                      <td className="py-[7px] px-4">{renderBadge(row.sensor_type || row.name)}</td>
+                      <td className="py-[7px] px-4 font-bold text-slate-800">
                         {row.value} <span className="font-normal text-slate-500 text-[10px]">{row.unit}</span>
                       </td>
-                      <td className="py-2 px-4 text-right font-mono text-[11px] text-slate-500">
+                      <td className="py-[7px] px-4 text-right font-mono text-[11px] text-slate-500">
                         {formatTimestamp(row.created_at)}
                       </td>
                     </tr>
@@ -235,7 +205,7 @@ export default function SensorHistory() {
           </div>
 
           {/* Table Footer Pagination */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 p-2.5 px-4 border-t border-slate-100 text-[11px] text-slate-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 p-2 px-4 border-t border-slate-100 text-[11px] text-slate-500">
             <div>
               Hiển thị <span className="font-semibold text-slate-700">{startRecord}-{endRecord}</span> trong số <span className="font-semibold text-slate-700">{pagination.total_records}</span> dòng
             </div>
@@ -255,7 +225,7 @@ export default function SensorHistory() {
                   <button
                     key={p}
                     onClick={() => handlePageChange(p)}
-                    className={`w-6.5 h-6.5 rounded-md font-semibold text-[11px] transition-all ${
+                    className={`w-6 h-6 rounded-md font-semibold text-[11px] transition-all ${
                       pagination.current_page === p
                         ? 'bg-blue-500 text-white shadow-sm'
                         : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
