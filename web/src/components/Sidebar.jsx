@@ -13,7 +13,7 @@ export default function Sidebar({ activeTab = '/', onTabChange, ipAddress = '192
       <div>
         {/* Brand Header */}
         <div className="mb-6 pl-1">
-          <h1 className="font-bold text-slate-800 text-base leading-snug tracking-tight">CONTRA IoT</h1>
+          <h1 className="font-bold text-slate-800 text-base leading-snug tracking-tight">Smart Home</h1>
           <p className="text-[10px] font-semibold text-blue-500 tracking-wider mt-0.5">SYSTEM V1.0</p>
         </div>
 

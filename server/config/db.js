@@ -45,9 +45,9 @@ async function initDatabase() {
       dbConnection.release();
     }
 
-    console.log('✅ Database initialized successfully (Real ESP8266 Mode)');
+    console.log('Database initialized successfully (Real ESP8266 Mode)');
   } catch (error) {
-    console.error('❌ Error initializing database:', error.message);
+    console.error('Error initializing database:', error.message);
   }
 }
 

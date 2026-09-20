@@ -22,11 +22,11 @@ const wss = new WebSocket.Server({ server });
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
-  console.log('🔌 Client connected to WebSocket');
+  console.log('Client connected to WebSocket');
   ws.send(JSON.stringify({ type: 'CONNECTED', message: 'WebSocket connected to Smart Home Server' }));
 
   ws.on('close', () => {
-    console.log('🔌 Client disconnected from WebSocket');
+    console.log('Client disconnected from WebSocket');
   });
 });
 
@@ -56,7 +56,7 @@ app.get('/api/health', (req, res) => {
 
 // Start Server, Init DB & MQTT Service
 server.listen(PORT, async () => {
-  console.log(`🌐 Backend Server running on http://localhost:${PORT}`);
+  console.log(`Backend Server running on http://localhost:${PORT}`);
   await initDatabase();
   initMqtt(broadcast);
 });

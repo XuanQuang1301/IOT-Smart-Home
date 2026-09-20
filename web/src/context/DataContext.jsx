@@ -27,22 +27,27 @@ export function DataProvider({ children }) {
   const [sensorHistoryCache, setSensorHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
-    appliedFilters: { sensor_id: '', sensor_type: '', value: '', time: '' }
+    appliedFilters: { sensor_id: '', sensor_type: '', value: '', time: '' },
+    limit: 10,
+    loading: false
   });
 
   // Device History State
   const [deviceHistoryCache, setDeviceHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
-    appliedFilters: { device_id: '', action: '', status: '', time: '' }
+    appliedFilters: { device_id: '', action: '', status: '', time: '' },
+    limit: 10,
+    loading: false
   });
 
   // Silent Background Fetch for Sensor History
-  const fetchSensorHistory = useCallback(async (page = 1, filters = {}) => {
+  const fetchSensorHistory = useCallback(async (page = 1, filters = {}, limit = 10) => {
+    setSensorHistoryCache((prev) => ({ ...prev, loading: true }));
     try {
       const params = {
         page,
-        limit: 10,
+        limit,
         ...(filters.sensor_id && { sensor_id: filters.sensor_id }),
         ...(filters.sensor_type && { sensor_type: filters.sensor_type }),
         ...(filters.value && { value: filters.value }),
@@ -54,20 +59,26 @@ export function DataProvider({ children }) {
         setSensorHistoryCache({
           data: res.data.data || [],
           pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
-          appliedFilters: filters
+          appliedFilters: filters,
+          limit,
+          loading: false
         });
+      } else {
+        setSensorHistoryCache((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
       console.error('Error fetching sensor history context:', err);
+      setSensorHistoryCache((prev) => ({ ...prev, loading: false }));
     }
   }, []);
 
   // Silent Background Fetch for Device History
-  const fetchDeviceHistory = useCallback(async (page = 1, filters = {}) => {
+  const fetchDeviceHistory = useCallback(async (page = 1, filters = {}, limit = 10) => {
+    setDeviceHistoryCache((prev) => ({ ...prev, loading: true }));
     try {
       const params = {
         page,
-        limit: 10,
+        limit,
         ...(filters.device_id && { device_id: filters.device_id }),
         ...(filters.action && { action: filters.action }),
         ...(filters.status && { status: filters.status }),
@@ -79,11 +90,16 @@ export function DataProvider({ children }) {
         setDeviceHistoryCache({
           data: res.data.data || [],
           pagination: res.data.pagination || { current_page: 1, total_pages: 1, total_records: 0 },
-          appliedFilters: filters
+          appliedFilters: filters,
+          limit,
+          loading: false
         });
+      } else {
+        setDeviceHistoryCache((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
       console.error('Error fetching device history context:', err);
+      setDeviceHistoryCache((prev) => ({ ...prev, loading: false }));
     }
   }, []);
 
@@ -105,8 +121,8 @@ export function DataProvider({ children }) {
       })
       .catch(console.error);
 
-    fetchSensorHistory(1, {});
-    fetchDeviceHistory(1, {});
+    fetchSensorHistory(1, {}, 10);
+    fetchDeviceHistory(1, {}, 10);
   }, [fetchSensorHistory, fetchDeviceHistory]);
 
   // Persistent Single WebSocket Connection
