@@ -225,6 +225,14 @@ export default function DeviceHistory() {
     });
   }, [data, sortConfig]);
 
+  const onCount = React.useMemo(() => {
+    return data.filter((d) => d.action === 'TURN_ON').length;
+  }, [data]);
+
+  const offCount = React.useMemo(() => {
+    return data.filter((d) => d.action === 'TURN_OFF').length;
+  }, [data]);
+
   const startRecord = (pagination.current_page - 1) * limit + (data.length > 0 ? 1 : 0);
   const endRecord = (pagination.current_page - 1) * limit + data.length;
 
@@ -237,8 +245,10 @@ export default function DeviceHistory() {
       {/* Compact Search & Filter Form Card */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm mb-3 flex-none">
         <form onSubmit={handleSearch}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2.5">
-            <div>
+          {/* Single Row Layout: ID (w-28) | Thiết bị (w-32) | Hành động (w-32) | Trạng thái (w-32) | Thời gian (flex-1) | Counters & Buttons */}
+          <div className="flex flex-wrap items-end gap-2.5">
+            {/* ID */}
+            <div className="w-full sm:w-28 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">ID</label>
               <input
                 type="text"
@@ -249,12 +259,13 @@ export default function DeviceHistory() {
               />
             </div>
 
-            <div>
+            {/* Thiết bị */}
+            <div className="w-full sm:w-32 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Thiết bị</label>
               <select
                 value={filters.device_id}
                 onChange={(e) => setFilters({ ...filters, device_id: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
               >
                 <option value="">Chọn thiết bị</option>
                 <option value="1">Đèn 1</option>
@@ -262,27 +273,27 @@ export default function DeviceHistory() {
               </select>
             </div>
 
-            <div>
+            {/* Hành động */}
+            <div className="w-full sm:w-32 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Hành động</label>
               <select
                 value={filters.action}
                 onChange={(e) => setFilters({ ...filters, action: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
               >
                 <option value="">Chọn hành động</option>
                 <option value="TURN_ON">TURN_ON</option>
                 <option value="TURN_OFF">TURN_OFF</option>
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <div>
+            {/* Trạng thái */}
+            <div className="w-full sm:w-32 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Trạng thái</label>
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
               >
                 <option value="">Chọn trạng thái</option>
                 <option value="SUCCESS">Thành công</option>
@@ -290,14 +301,14 @@ export default function DeviceHistory() {
               </select>
             </div>
 
-            <div className="md:col-span-2">
+            {/* Thời gian */}
+            <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-bold text-slate-900 mb-1">Thời gian</label>
-
               <div className="relative flex items-center space-x-1.5">
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="YYYY-MM-DD HH:mm:ss (VD: 2026-09-20)"
+                    placeholder="YYYY-MM-DD HH:mm:ss"
                     value={filters.time}
                     onChange={(e) => setFilters({ ...filters, time: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-xl pl-3 pr-7 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all font-mono"
@@ -411,22 +422,34 @@ export default function DeviceHistory() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer"
-              >
-                Tìm kiếm
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={loading}
-                className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer"
-              >
-                Đặt lại
-              </button>
+            {/* Column on Right: Counters on top of Search & Reset buttons */}
+            <div className="flex flex-col justify-end space-y-1 shrink-0 ml-auto">
+              <div className="flex items-center space-x-1.5 justify-end">
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-lg text-[10px] font-bold shadow-2xs whitespace-nowrap">
+                  Số lần bật: <span className="font-black text-emerald-800 text-xs ml-0.5">{onCount}</span>
+                </span>
+                <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-lg text-[10px] font-bold shadow-2xs whitespace-nowrap">
+                  Số lần tắt: <span className="font-black text-rose-800 text-xs ml-0.5">{offCount}</span>
+                </span>
+              </div>
+
+              <div className="flex items-center space-x-2 justify-end">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Tìm kiếm
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={loading}
+                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Đặt lại
+                </button>
+              </div>
             </div>
           </div>
         </form>
