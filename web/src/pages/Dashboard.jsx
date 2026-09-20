@@ -53,6 +53,51 @@ export default function Dashboard() {
     }
   };
 
+  // Calculate dynamic responsive Y-Axis domains for vivid wave fluctuations without line collisions
+  const { tempDomain, humDomain, lightDomain } = React.useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return {
+        tempDomain: [25, 35],
+        humDomain: [60, 80],
+        lightDomain: [0, 100]
+      };
+    }
+
+    const temps = chartData.map((d) => Number(d.temperature)).filter((v) => !isNaN(v));
+    const hums = chartData.map((d) => Number(d.humidity)).filter((v) => !isNaN(v));
+    const lights = chartData.map((d) => Number(d.light)).filter((v) => !isNaN(v));
+
+    // Temperature domain (Positioned in LOWER middle area of chart)
+    let minT = temps.length ? Math.min(...temps) : 30;
+    let maxT = temps.length ? Math.max(...temps) : 30;
+    let diffT = maxT - minT;
+    if (diffT < 0.6) diffT = 0.6; // minimum scale to ensure vivid wave motion
+    const tempLow = Number((minT - diffT * 0.5).toFixed(1));
+    const tempHigh = Number((maxT + diffT * 1.8).toFixed(1));
+
+    // Humidity domain (Positioned in UPPER middle area of chart)
+    let minH = hums.length ? Math.min(...hums) : 71;
+    let maxH = hums.length ? Math.max(...hums) : 71;
+    let diffH = maxH - minH;
+    if (diffH < 1.2) diffH = 1.2; // minimum scale to ensure vivid wave motion
+    const humLow = Number((minH - diffH * 1.8).toFixed(1));
+    const humHigh = Number((maxH + diffH * 0.5).toFixed(1));
+
+    // Light domain
+    let minL = lights.length ? Math.min(...lights) : 10;
+    let maxL = lights.length ? Math.max(...lights) : 50;
+    let diffL = maxL - minL;
+    if (diffL < 10) diffL = 10;
+    const lightLow = Math.max(0, Number((minL - diffL * 0.5).toFixed(0)));
+    const lightHigh = Number((maxL + diffL * 1.5).toFixed(0));
+
+    return {
+      tempDomain: [tempLow, tempHigh],
+      humDomain: [humLow, humHigh],
+      lightDomain: [lightLow, lightHigh]
+    };
+  }, [chartData]);
+
   return (
     <div className="h-full p-6 overflow-y-auto flex flex-col justify-between">
       <div>
@@ -133,31 +178,31 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={15} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 
-                {/* Y-Axis for Temperature (°C) with focused auto-scale domain */}
+                {/* Y-Axis for Temperature (°C) with focused dynamic scale */}
                 <YAxis
                   yAxisId="temp"
                   orientation="left"
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: '#f59e0b', fontSize: 10 }}
-                  domain={[(min) => (isNaN(min) ? 20 : Math.floor(min - 0.5)), (max) => (isNaN(max) ? 40 : Math.ceil(max + 0.5))]}
+                  domain={tempDomain}
                 />
 
-                {/* Y-Axis for Humidity (%) with focused auto-scale domain */}
+                {/* Y-Axis for Humidity (%) with focused dynamic scale */}
                 <YAxis
                   yAxisId="hum"
                   orientation="right"
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: '#3b82f6', fontSize: 10 }}
-                  domain={[(min) => (isNaN(min) ? 50 : Math.floor(min - 1)), (max) => (isNaN(max) ? 90 : Math.ceil(max + 1))]}
+                  domain={humDomain}
                 />
 
-                {/* Hidden Y-Axis for Light (Lx) with focused auto-scale domain */}
+                {/* Hidden Y-Axis for Light (Lx) */}
                 <YAxis
                   yAxisId="light"
                   hide={true}
-                  domain={[(min) => (isNaN(min) ? 0 : Math.max(0, Math.floor(min - 4))), (max) => (isNaN(max) ? 100 : Math.ceil(max + 4))]}
+                  domain={lightDomain}
                 />
 
                 <Tooltip

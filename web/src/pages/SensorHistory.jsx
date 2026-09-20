@@ -222,24 +222,51 @@ export default function SensorHistory() {
       {/* Compact Search & Filter Form Card */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm mb-3 flex-none">
         <form onSubmit={handleSearch}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2.5">
-            <div>
+          {/* Single Row Layout: SensorID (w-36) | Loại cảm biến (w-40) | Giá trị (w-32) | Thời gian (flex-1) | Buttons */}
+          <div className="flex flex-wrap items-end gap-2.5">
+            {/* SensorID */}
+            <div className="w-full sm:w-36 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">SensorID</label>
               <input
                 type="text"
                 placeholder="Nhập SensorID"
                 value={filters.sensor_id}
-                onChange={(e) => setFilters({ ...filters, sensor_id: e.target.value })}
+                onChange={(e) => {
+                  const idVal = e.target.value;
+                  const idToTypeMap = {
+                    '1': 'TEMPERATURE',
+                    '2': 'HUMIDITY',
+                    '3': 'LIGHT'
+                  };
+                  setFilters({
+                    ...filters,
+                    sensor_id: idVal,
+                    sensor_type: idToTypeMap[idVal.trim()] || ''
+                  });
+                }}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all font-mono"
               />
             </div>
 
-            <div>
+            {/* Loại cảm biến */}
+            <div className="w-full sm:w-40 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Loại cảm biến</label>
               <select
                 value={filters.sensor_type}
-                onChange={(e) => setFilters({ ...filters, sensor_type: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
+                onChange={(e) => {
+                  const type = e.target.value;
+                  const typeToIdMap = {
+                    TEMPERATURE: '1',
+                    HUMIDITY: '2',
+                    LIGHT: '3'
+                  };
+                  setFilters({
+                    ...filters,
+                    sensor_type: type,
+                    sensor_id: typeToIdMap[type] || ''
+                  });
+                }}
+                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
               >
                 <option value="">Chọn loại cảm biến</option>
                 <option value="TEMPERATURE">Nhiệt độ</option>
@@ -248,7 +275,8 @@ export default function SensorHistory() {
               </select>
             </div>
 
-            <div>
+            {/* Giá trị */}
+            <div className="w-full sm:w-32 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Giá trị</label>
               <input
                 type="text"
@@ -258,17 +286,16 @@ export default function SensorHistory() {
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-            <div className="md:col-span-2">
+            {/* Thời gian */}
+            <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-bold text-slate-900 mb-1">Thời gian</label>
 
               <div className="relative flex items-center space-x-1.5">
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="YYYY-MM-DD HH:mm:ss (VD: 2026-09-20)"
+                    placeholder="YYYY-MM-DD HH:mm:ss"
                     value={filters.time}
                     onChange={(e) => setFilters({ ...filters, time: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-xl pl-3 pr-7 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:text-slate-400 transition-all font-mono"
@@ -382,11 +409,12 @@ export default function SensorHistory() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 justify-end">
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2 shrink-0 ml-auto">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer"
+                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer whitespace-nowrap"
               >
                 Tìm kiếm
               </button>
@@ -394,7 +422,7 @@ export default function SensorHistory() {
                 type="button"
                 onClick={handleReset}
                 disabled={loading}
-                className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer"
+                className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap"
               >
                 Đặt lại
               </button>
