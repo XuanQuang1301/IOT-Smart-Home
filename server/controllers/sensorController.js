@@ -50,7 +50,7 @@ async function getSensorHistory(req, res) {
     const time = req.query.time;
 
     // Chart dataset query
-    if (req.query.deviceId || req.query.limit === '20') {
+    if (req.query.deviceId || req.query.chart === 'true') {
       const [chartRows] = await pool.query(`
         SELECT 
           DATE_FORMAT(CONVERT_TZ(sd.created_at, @@session.time_zone, '+07:00'), '%H:%i:%s') as time,

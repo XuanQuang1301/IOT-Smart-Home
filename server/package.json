@@ -1,10 +1,10 @@
 {
-  "name": "backend",
+  "name": "server",
   "version": "1.0.0",
   "description": "Backend NodeJS cho hệ thống IoT Smart Home",
   "main": "server.js",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "nodemon server.js",
     "build": "echo 'Backend build step complete'",
     "start": "node server.js",
     "init-db": "node scripts/initDb.js"
