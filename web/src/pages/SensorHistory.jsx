@@ -162,13 +162,34 @@ export default function SensorHistory() {
     switch (sensorType) {
       case 'TEMPERATURE':
       case 'Nhiệt độ':
-        return <span className="px-2.5 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[11px] font-semibold">Nhiệt độ</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[11px] font-semibold border border-amber-200/60 shadow-2xs">
+            <svg className="w-3.5 h-3.5 mr-1 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 14.76V5a2 2 0 10-4 0v9.76a4 4 0 104 0z" />
+            </svg>
+            Nhiệt độ
+          </span>
+        );
       case 'HUMIDITY':
       case 'Độ ẩm':
-        return <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[11px] font-semibold">Độ ẩm</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[11px] font-semibold border border-blue-200/60 shadow-2xs">
+            <svg className="w-3.5 h-3.5 mr-1 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" />
+            </svg>
+            Độ ẩm
+          </span>
+        );
       case 'LIGHT':
       case 'Ánh sáng':
-        return <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-semibold">Ánh sáng</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-semibold border border-emerald-200/60 shadow-2xs">
+            <svg className="w-3.5 h-3.5 mr-1 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            Ánh sáng
+          </span>
+        );
       default:
         return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[11px] font-semibold">{sensorType}</span>;
     }

@@ -67,29 +67,23 @@ export default function Dashboard() {
     const hums = chartData.map((d) => Number(d.humidity)).filter((v) => !isNaN(v));
     const lights = chartData.map((d) => Number(d.light)).filter((v) => !isNaN(v));
 
-    // Temperature domain (Positioned in LOWER middle area of chart)
+    // Temperature domain (Integer bounds so Recharts generates ticks on left)
     let minT = temps.length ? Math.min(...temps) : 30;
     let maxT = temps.length ? Math.max(...temps) : 30;
-    let diffT = maxT - minT;
-    if (diffT < 0.6) diffT = 0.6; // minimum scale to ensure vivid wave motion
-    const tempLow = Number((minT - diffT * 0.5).toFixed(1));
-    const tempHigh = Number((maxT + diffT * 1.8).toFixed(1));
+    const tempLow = Math.floor(minT - 2);
+    const tempHigh = Math.ceil(maxT + 3);
 
-    // Humidity domain (Positioned in UPPER middle area of chart)
-    let minH = hums.length ? Math.min(...hums) : 71;
-    let maxH = hums.length ? Math.max(...hums) : 71;
-    let diffH = maxH - minH;
-    if (diffH < 1.2) diffH = 1.2; // minimum scale to ensure vivid wave motion
-    const humLow = Number((minH - diffH * 1.8).toFixed(1));
-    const humHigh = Number((maxH + diffH * 0.5).toFixed(1));
+    // Humidity domain (Integer bounds for right ticks)
+    let minH = hums.length ? Math.min(...hums) : 75;
+    let maxH = hums.length ? Math.max(...hums) : 75;
+    const humLow = Math.floor(minH - 3);
+    const humHigh = Math.ceil(maxH + 2);
 
     // Light domain
     let minL = lights.length ? Math.min(...lights) : 10;
     let maxL = lights.length ? Math.max(...lights) : 50;
-    let diffL = maxL - minL;
-    if (diffL < 10) diffL = 10;
-    const lightLow = Math.max(0, Number((minL - diffL * 0.5).toFixed(0)));
-    const lightHigh = Number((maxL + diffL * 1.5).toFixed(0));
+    const lightLow = Math.max(0, Math.floor(minL - 5));
+    const lightHigh = Math.ceil(maxL + 15);
 
     return {
       tempDomain: [tempLow, tempHigh],
@@ -97,6 +91,17 @@ export default function Dashboard() {
       lightDomain: [lightLow, lightHigh]
     };
   }, [chartData]);
+
+  const tempPercent = Math.min(100, Math.max(0, (Number(sensors.temperature || 0) / 50) * 100));
+  const humPercent = Math.min(100, Math.max(0, Number(sensors.humidity || 0)));
+
+  // Dynamic light card darkness calculation based on ESP8266 hardware threshold (~40 lux = dark)
+  const lightVal = Number(sensors.light || 0);
+  const lightPercent = Math.min(100, Math.max(0, (lightVal / 100) * 100));
+  const darknessRatio = Math.min(1, Math.max(0, (lightVal - 30) / 15)); // 30 lux = Sáng, >=45 lux = Tối
+  const isDarkCard = lightVal >= 40;
+  const lightCardBg = `rgb(${Math.round(255 - darknessRatio * 240)}, ${Math.round(255 - darknessRatio * 225)}, ${Math.round(255 - darknessRatio * 210)})`;
+  const lightCardBorder = isDarkCard ? '#1e293b' : '#f1f5f9';
 
   return (
     <div className="h-full p-6 overflow-y-auto flex flex-col justify-between">
@@ -106,50 +111,117 @@ export default function Dashboard() {
         {/* 3 Top Sensor Widget Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {/* Nhiệt độ */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nhiệt độ</span>
-              <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-md">°C</span>
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nhiệt độ</span>
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-md">°C</span>
+              </div>
+              <div className="flex items-baseline space-x-1 mt-2">
+                <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.temperature}</span>
+                <span className="text-sm font-bold text-amber-500">°C</span>
+              </div>
             </div>
-            <div className="flex items-baseline space-x-1 mt-2">
-              <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.temperature}</span>
-              <span className="text-sm font-bold text-amber-500">°C</span>
-            </div>
-            <div className="text-[10px] text-slate-400 mt-2 flex items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1"></span>
-              Cập nhật: {formatTime(sensors.timestamp)}
+
+            <div className="mt-3">
+              {/* Dynamic Value Bar */}
+              <div className="w-full bg-amber-100/60 h-2 rounded-full overflow-hidden mb-2">
+                <div
+                  className="bg-gradient-to-r from-amber-400 to-amber-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
+                  style={{ width: `${tempPercent}%` }}
+                ></div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1"></span>
+                  Cập nhật: {formatTime(sensors.timestamp)}
+                </span>
+                <span className="font-mono font-bold text-amber-600/80">{Math.round(tempPercent)}%</span>
+              </div>
             </div>
           </div>
 
           {/* Độ ẩm */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Độ ẩm</span>
-              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md">%</span>
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Độ ẩm</span>
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md">%</span>
+              </div>
+              <div className="flex items-baseline space-x-1 mt-2">
+                <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.humidity}</span>
+                <span className="text-sm font-bold text-blue-500">%</span>
+              </div>
             </div>
-            <div className="flex items-baseline space-x-1 mt-2">
-              <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.humidity}</span>
-              <span className="text-sm font-bold text-blue-500">%</span>
-            </div>
-            <div className="text-[10px] text-slate-400 mt-2 flex items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block mr-1"></span>
-              Cập nhật: {formatTime(sensors.timestamp)}
+
+            <div className="mt-3">
+              {/* Dynamic Value Bar */}
+              <div className="w-full bg-blue-100/60 h-2 rounded-full overflow-hidden mb-2">
+                <div
+                  className="bg-gradient-to-r from-blue-400 to-blue-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
+                  style={{ width: `${humPercent}%` }}
+                ></div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                <span className="flex items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block mr-1"></span>
+                  Cập nhật: {formatTime(sensors.timestamp)}
+                </span>
+                <span className="font-mono font-bold text-blue-600/80">{Math.round(humPercent)}%</span>
+              </div>
             </div>
           </div>
 
-          {/* Ánh sáng */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ánh sáng</span>
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md">lux</span>
+          {/* Ánh sáng (Dynamic Darkening Card when Lux increases) */}
+          <div
+            className="p-4.5 rounded-2xl border shadow-sm card-hover flex flex-col justify-between transition-all duration-700 ease-in-out"
+            style={{
+              backgroundColor: lightCardBg,
+              borderColor: lightCardBorder
+            }}
+          >
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center space-x-1.5">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider transition-colors duration-700 ${isDarkCard ? 'text-slate-300' : 'text-slate-400'}`}>
+                    Ánh sáng
+                  </span>
+                  <span className={`px-1.5 py-0.2 text-[9px] font-extrabold rounded-md transition-all duration-700 ${isDarkCard ? 'bg-indigo-900/80 text-indigo-300 border border-indigo-700/50' : 'bg-amber-100/80 text-amber-700'}`}>
+                    {isDarkCard ? 'Tối 🌙' : 'Sáng ☀️'}
+                  </span>
+                </div>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-colors duration-700 ${isDarkCard ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-600'}`}>
+                  lux
+                </span>
+              </div>
+              <div className="flex items-baseline space-x-1 mt-2">
+                <span className={`text-3xl font-extrabold tracking-tight transition-colors duration-700 ${isDarkCard ? 'text-white' : 'text-slate-800'}`}>
+                  {sensors.light}
+                </span>
+                <span className={`text-xs font-bold transition-colors duration-700 ${isDarkCard ? 'text-emerald-400' : 'text-emerald-500'}`}>
+                  lux
+                </span>
+              </div>
             </div>
-            <div className="flex items-baseline space-x-1 mt-2">
-              <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.light}</span>
-              <span className="text-xs font-bold text-emerald-500">lux</span>
-            </div>
-            <div className="text-[10px] text-slate-400 mt-2 flex items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span>
-              Cập nhật: {formatTime(sensors.timestamp)}
+
+            <div className="mt-3">
+              {/* Dynamic Value Bar */}
+              <div className={`w-full h-2 rounded-full overflow-hidden mb-2 transition-colors duration-700 ${isDarkCard ? 'bg-slate-800' : 'bg-emerald-100/60'}`}>
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${isDarkCard ? 'bg-gradient-to-r from-cyan-400 to-emerald-400' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
+                  style={{ width: `${lightPercent}%` }}
+                ></div>
+              </div>
+
+              <div className={`text-[10px] flex items-center justify-between transition-colors duration-700 ${isDarkCard ? 'text-slate-400' : 'text-slate-400'}`}>
+                <span className="flex items-center">
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 transition-colors duration-700 ${isDarkCard ? 'bg-emerald-400 shadow-xs shadow-emerald-400' : 'bg-emerald-400'}`}></span>
+                  Cập nhật: {formatTime(sensors.timestamp)}
+                </span>
+                <span className={`font-mono font-bold transition-colors duration-700 ${isDarkCard ? 'text-emerald-400' : 'text-emerald-600/80'}`}>{Math.round(lightPercent)}%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -159,7 +231,7 @@ export default function Dashboard() {
           <h2 className="text-sm font-bold text-slate-800 mb-3">Xu hướng Cảm biến</h2>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 25, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
@@ -178,24 +250,30 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={15} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 
-                {/* Y-Axis for Temperature (°C) with focused dynamic scale */}
+                {/* Y-Axis for Temperature (°C) / Light on LEFT side - Dịch sang phải sát mép biểu đồ */}
                 <YAxis
                   yAxisId="temp"
+                  type="number"
                   orientation="left"
+                  width={36}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#f59e0b', fontSize: 10 }}
-                  domain={tempDomain}
+                  tick={{ fill: '#f59e0b', fontSize: 10, fontWeight: 700, dx: 45 }}
+                  domain={[(dataMin) => Math.floor(dataMin - 2), (dataMax) => Math.ceil(dataMax + 2)]}
+                  tickFormatter={(val) => `${Number(val).toFixed(0)}°C`}
                 />
 
-                {/* Y-Axis for Humidity (%) with focused dynamic scale */}
+                {/* Y-Axis for Humidity (%) on RIGHT side */}
                 <YAxis
                   yAxisId="hum"
+                  type="number"
                   orientation="right"
+                  width={35}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#3b82f6', fontSize: 10 }}
-                  domain={humDomain}
+                  tick={{ fill: '#3b82f6', fontSize: 10, fontWeight: 700 }}
+                  domain={[(dataMin) => Math.floor(dataMin - 3), (dataMax) => Math.ceil(dataMax + 2)]}
+                  tickFormatter={(val) => `${Number(val).toFixed(0)}%`}
                 />
 
                 {/* Hidden Y-Axis for Light (Lx) */}

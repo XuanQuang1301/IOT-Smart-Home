@@ -225,14 +225,6 @@ export default function DeviceHistory() {
     });
   }, [data, sortConfig]);
 
-  const onCount = React.useMemo(() => {
-    return data.filter((d) => d.action === 'TURN_ON').length;
-  }, [data]);
-
-  const offCount = React.useMemo(() => {
-    return data.filter((d) => d.action === 'TURN_OFF').length;
-  }, [data]);
-
   const startRecord = (pagination.current_page - 1) * limit + (data.length > 0 ? 1 : 0);
   const endRecord = (pagination.current_page - 1) * limit + data.length;
 
@@ -422,34 +414,23 @@ export default function DeviceHistory() {
               </div>
             </div>
 
-            {/* Column on Right: Counters on top of Search & Reset buttons */}
-            <div className="flex flex-col justify-end space-y-1 shrink-0 ml-auto">
-              <div className="flex items-center space-x-1.5 justify-end">
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-lg text-[10px] font-bold shadow-2xs whitespace-nowrap">
-                  Số lần bật: <span className="font-black text-emerald-800 text-xs ml-0.5">{onCount}</span>
-                </span>
-                <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200/80 rounded-lg text-[10px] font-bold shadow-2xs whitespace-nowrap">
-                  Số lần tắt: <span className="font-black text-rose-800 text-xs ml-0.5">{offCount}</span>
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-2 justify-end">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  Tìm kiếm
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  disabled={loading}
-                  className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  Đặt lại
-                </button>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2 shrink-0 ml-auto">
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold px-4 py-1 rounded-xl shadow-sm text-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                Tìm kiếm
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={loading}
+                className="border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 font-bold px-3 py-1 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                Đặt lại
+              </button>
             </div>
           </div>
         </form>
