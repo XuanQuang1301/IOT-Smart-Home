@@ -2,7 +2,16 @@ import React from 'react';
 import Header from '../components/Header';
 import avatarImg from '../assets/avatar.png';
 
+/**
+ * Component Profile - Trang Thông Tin Cá Nhân & Tài Liệu Dự Án
+ * Chức năng chính:
+ * 1. Hiển thị ảnh đại diện và thông tin sinh viên thực hiện (Họ tên, Mã sinh viên, Lớp, Chuyên ngành).
+ * 2. Cung cấp danh sách các đường liên kết (Links) dẫn tới tài nguyên dự án: GitHub Repo, Thiết kế Figma, Tài liệu Postman API, Báo cáo tiểu luận.
+ */
 export default function Profile() {
+  // =========================================================================
+  // KHỐI 1: DANH SÁCH LIÊN KẾT TÀI LIỆU DỰ ÁN (PROJECT LINKS CONFIG)
+  // =========================================================================
   const links = [
     {
       title: 'GitHub Repository',
@@ -31,23 +40,29 @@ export default function Profile() {
     {
       title: 'Báo cáo tiểu luận',
       url: 'drive.google.com/share/baocao-iot.pdf',
-      href: 'https://drive.google.com',
+      href: 'https://drive.google.com/file/d/13nv0bGtUUwD4Xyn19TzxqBvjHtVGuRMv/view?usp=sharing',
       badge: 'PDF',
       badgeStyle: 'bg-rose-50 text-rose-700 border-rose-200',
       hoverBorder: 'hover:border-rose-400 hover:bg-rose-50/40'
     }
   ];
 
+  // =========================================================================
+  // KHỐI 2: GIAO DIỆN HIỂN THỊ (RENDER JSX)
+  // =========================================================================
   return (
     <div className="h-full p-5 overflow-y-auto flex flex-col justify-between">
       <div>
+        {/* 2.1. Header Tiêu đề trang */}
         <Header title="Profile" subtitle="Thông tin cá nhân và tài liệu liên quan đến dự án" />
 
         <div className="max-w-md mx-auto my-2">
-          {/* Main Container Card */}
+          {/* KHỐI THẺ CHÍNH (MAIN CONTAINER CARD) */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-md p-6">
-            {/* Avatar & Basic Info */}
+            
+            {/* 2.2. KHỐI THÔNG TIN SINH VIÊN & AVATAR (AVATAR & STUDENT INFO SECTION) */}
             <div className="flex flex-col items-center text-center pb-5 border-b border-slate-200">
+              {/* Khung Ảnh Đại Diện */}
               <div className="relative mb-3">
                 <div className="w-20 h-20 rounded-full p-1 ring-4 ring-blue-500/20 overflow-hidden bg-white shadow-md">
                   <img
@@ -62,12 +77,13 @@ export default function Profile() {
                 </div>
               </div>
 
+              {/* Tên & Lớp học */}
               <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Đặng Xuân Quang</h2>
               <span className="mt-1 px-3 py-0.5 bg-blue-100/80 text-blue-700 text-xs font-bold rounded-full border border-blue-200/60 shadow-2xs">
                 Lớp: D23CNPM06
               </span>
 
-              {/* Student Details Box (High Contrast Clear Box) */}
+              {/* Khung Chi Tiết Mã Sinh Viên & Chuyên Ngành */}
               <div className="grid grid-cols-2 gap-3 w-full mt-4 p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-left shadow-2xs">
                 <div className="border-r border-slate-200/80 pr-2">
                   <span className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">MÃ SINH VIÊN</span>
@@ -80,7 +96,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Project & Document Links Section (Distinct Framed Cards) */}
+            {/* 2.3. KHỐI DANH SÁCH THẺ LIÊN KẾT TÀI LIỆU DỰ ÁN (PROJECT LINKS LIST) */}
             <div className="pt-5">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">LIÊN KẾT DỰ ÁN & TÀI LIỆU</h3>
 

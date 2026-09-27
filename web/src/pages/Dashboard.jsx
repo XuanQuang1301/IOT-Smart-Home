@@ -3,8 +3,9 @@ import axios from 'axios';
 import Header from '../components/Header';
 import { useData } from '../context/DataContext';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { SENSOR_COLORS, DEVICE_COLORS } from '../constants/colors';
 
-const API_BASE = '/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
 export default function Dashboard() {
   const { sensors, chartData, setChartData, devices, setDevices } = useData();
@@ -22,26 +23,36 @@ export default function Dashboard() {
     }
   }, [chartData.length, setChartData]);
 
-  // Toggle Device handler
+  // KHỐI 2: HÀM XỬ LÝ BẬT / TẮT THIẾT BỊ 
   const handleToggleDevice = async (device) => {
+    // Xác định hành động tiếp theo: nếu đang ON thì gửi TURN_OFF, ngược lại gửi TURN_ON
     const nextAction = device.state === 'ON' ? 'TURN_OFF' : 'TURN_ON';
+    
+    // Đánh dấu thiết bị này đang được điều khiển 
     setControlling((prev) => ({ ...prev, [device.id]: true }));
 
     try {
+      // Gửi request POST tới Backend để điều khiển thiết bị
       const res = await axios.post(`${API_BASE}/devices/${device.id}/control`, { action: nextAction });
+      
+      // Khi Backend trả về kết quả thành công, cập nhật ngay trạng thái thiết bị trong State
       if (res.data && res.data.data) {
         setDevices((prev) =>
           prev.map((d) => (d.id === device.id ? { ...d, state: res.data.data.state } : d))
         );
       }
     } catch (err) {
-      console.error('Failed to control device:', err);
+      console.error('Lỗi khi điều khiển thiết bị:', err);
       alert('Không thể điều khiển thiết bị! Vui lòng thử lại.');
     } finally {
+      // Mở khóa nút bấm thiết bị sau khi xử lý xong
       setControlling((prev) => ({ ...prev, [device.id]: false }));
     }
   };
 
+  // =========================================================================
+  // KHỐI 3: HÀM ĐỊNH DẠNG THỜI GIAN (TIME FORMATTER)
+  // =========================================================================
   const formatTime = (ts) => {
     if (!ts) return new Date().toLocaleTimeString('vi-VN', { hour12: false });
     try {
@@ -53,7 +64,10 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate dynamic responsive Y-Axis domains for vivid wave fluctuations without line collisions
+  // =========================================================================
+  // KHỐI 4: TÍNH TOÁN KHOẢNG GIÁ TRỊ TRỤC Y TỰ ĐỘNG CHO ĐỒ THỊ (USEMEMO)
+  // Chức năng: Tự động tính min/max động để đường biểu đồ luôn uốn lượn đẹp mắt, không bị đè dập hay chạm mép
+  // =========================================================================
   const { tempDomain, humDomain, lightDomain } = React.useMemo(() => {
     if (!chartData || chartData.length === 0) {
       return {
@@ -63,23 +77,24 @@ export default function Dashboard() {
       };
     }
 
+    // Trích xuất danh sách giá trị hợp lệ
     const temps = chartData.map((d) => Number(d.temperature)).filter((v) => !isNaN(v));
     const hums = chartData.map((d) => Number(d.humidity)).filter((v) => !isNaN(v));
     const lights = chartData.map((d) => Number(d.light)).filter((v) => !isNaN(v));
 
-    // Temperature domain (Integer bounds so Recharts generates ticks on left)
+    // Khoảng trục Y cho Nhiệt độ (°C)
     let minT = temps.length ? Math.min(...temps) : 30;
     let maxT = temps.length ? Math.max(...temps) : 30;
     const tempLow = Math.floor(minT - 2);
     const tempHigh = Math.ceil(maxT + 3);
 
-    // Humidity domain (Integer bounds for right ticks)
+    // Khoảng trục Y cho Độ ẩm (%)
     let minH = hums.length ? Math.min(...hums) : 75;
     let maxH = hums.length ? Math.max(...hums) : 75;
     const humLow = Math.floor(minH - 3);
     const humHigh = Math.ceil(maxH + 2);
 
-    // Light domain
+    // Khoảng trục Y cho Ánh sáng (Lux)
     let minL = lights.length ? Math.min(...lights) : 10;
     let maxL = lights.length ? Math.max(...lights) : 50;
     const lightLow = Math.max(0, Math.floor(minL - 5));
@@ -92,25 +107,35 @@ export default function Dashboard() {
     };
   }, [chartData]);
 
+  // =========================================================================
+  // KHỐI 5: TÍNH TOÁN HIỆU ỨNG THẺ CẢM BIẾN (DYNAMIC UI CALCULATIONS)
+  // =========================================================================
+  // Phần trăm độ dài thanh tiến trình cho Nhiệt độ và Độ ẩm
   const tempPercent = Math.min(100, Math.max(0, (Number(sensors.temperature || 0) / 50) * 100));
   const humPercent = Math.min(100, Math.max(0, Number(sensors.humidity || 0)));
 
-  // Dynamic light card darkness calculation based on ESP8266 hardware threshold (~40 lux = dark)
+  // Tính toán màu nền động cho thẻ Ánh sáng dựa trên phần cứng ESP8266 (~40 Lux trở lên = Trời tối)
   const lightVal = Number(sensors.light || 0);
   const lightPercent = Math.min(100, Math.max(0, (lightVal / 100) * 100));
-  const darknessRatio = Math.min(1, Math.max(0, (lightVal - 30) / 15)); // 30 lux = Sáng, >=45 lux = Tối
+  const darknessRatio = Math.min(1, Math.max(0, (lightVal - 40) / 15)); // Ngưỡng: 30 lux = Sáng, >=45 lux = Tối
   const isDarkCard = lightVal >= 40;
+  // Tự đổi màu background từ sáng sang giao diện tối (Dark Mode) nhịp nhàng
   const lightCardBg = `rgb(${Math.round(255 - darknessRatio * 240)}, ${Math.round(255 - darknessRatio * 225)}, ${Math.round(255 - darknessRatio * 210)})`;
   const lightCardBorder = isDarkCard ? '#1e293b' : '#f1f5f9';
 
+  // =========================================================================
+  // KHỐI 6: GIAO DIỆN HIỂN THỊ (RENDER JSX)
+  // =========================================================================
   return (
     <div className="h-full p-6 overflow-y-auto flex flex-col justify-between">
       <div>
+        {/* 6.1. Header Tiêu đề trang */}
         <Header title="Hệ Thống IoT" subtitle="Theo dõi và điều khiển thiết bị thời gian thực" />
 
-        {/* 3 Top Sensor Widget Cards */}
+        {/* 6.2. KHỐI 3 THẺ CẢM BIẾN TRÊN CÙNG (SENSOR WIDGET CARDS) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Nhiệt độ */}
+          
+          {/* THẺ 1: NHIỆT ĐỘ (°C) */}
           <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
@@ -124,7 +149,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-3">
-              {/* Dynamic Value Bar */}
+              {/* Thanh tiến trình nhiệt độ */}
               <div className="w-full bg-amber-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
                   className="bg-gradient-to-r from-amber-400 to-amber-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
@@ -137,12 +162,12 @@ export default function Dashboard() {
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1"></span>
                   Cập nhật: {formatTime(sensors.timestamp)}
                 </span>
-                <span className="font-mono font-bold text-amber-600/80">{Math.round(tempPercent)}%</span>
+                {/* <span className="font-mono font-bold text-amber-600/80">Max 50°C</span> */}
               </div>
             </div>
           </div>
 
-          {/* Độ ẩm */}
+          {/* THẺ 2: ĐỘ ẨM (%) */}
           <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
@@ -156,7 +181,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-3">
-              {/* Dynamic Value Bar */}
+              {/* Thanh tiến trình độ ẩm */}
               <div className="w-full bg-blue-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
                   className="bg-gradient-to-r from-blue-400 to-blue-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
@@ -174,7 +199,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Ánh sáng (Dynamic Darkening Card when Lux increases) */}
+          {/* THẺ 3: ÁNH SÁNG (Lux) - Thẻ tự động đổi màu nền khi Lux thay đổi */}
           <div
             className="p-4.5 rounded-2xl border shadow-sm card-hover flex flex-col justify-between transition-all duration-700 ease-in-out"
             style={{
@@ -207,7 +232,7 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-3">
-              {/* Dynamic Value Bar */}
+              {/* Thanh tiến trình ánh sáng */}
               <div className={`w-full h-2 rounded-full overflow-hidden mb-2 transition-colors duration-700 ${isDarkCard ? 'bg-slate-800' : 'bg-emerald-100/60'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${isDarkCard ? 'bg-gradient-to-r from-cyan-400 to-emerald-400' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
@@ -226,31 +251,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Sensor Trend Chart Section with Ultra-Smooth Natural Waves */}
+        {/* 6.3. KHỐI ĐỒ THỊ XU HƯỚNG CẢM BIẾN (SENSOR TREND CHART) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-5">
           <h2 className="text-sm font-bold text-slate-800 mb-3">Xu hướng Cảm biến</h2>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 25, left: 10, bottom: 0 }}>
+                {/* Định nghĩa Gradient chuyển màu bóng mờ đổ dưới chân các đường đồ thị */}
                 <defs>
                   <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={SENSOR_COLORS.temperature.hex} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={SENSOR_COLORS.temperature.hex} stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="humGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={SENSOR_COLORS.humidity.hex} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={SENSOR_COLORS.humidity.hex} stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="lightGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={SENSOR_COLORS.light.hex} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={SENSOR_COLORS.light.hex} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 
+                {/* Lưới đồ thị nét đứt */}
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                
+                {/* Trục X hiển thị Mốc thời gian */}
                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={15} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 
-                {/* Y-Axis for Temperature (°C) / Light on LEFT side - Dịch sang phải sát mép biểu đồ */}
+                {/* Trục Y cho Nhiệt độ (°C) nằm bên TẬP TRÁI */}
                 <YAxis
                   yAxisId="temp"
                   type="number"
@@ -258,12 +287,12 @@ export default function Dashboard() {
                   width={36}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#f59e0b', fontSize: 10, fontWeight: 700, dx: 45 }}
+                  tick={{ fill: SENSOR_COLORS.temperature.hex, fontSize: 10, fontWeight: 700, dx: 45 }}
                   domain={[(dataMin) => Math.floor(dataMin - 2), (dataMax) => Math.ceil(dataMax + 2)]}
                   tickFormatter={(val) => `${Number(val).toFixed(0)}°C`}
                 />
 
-                {/* Y-Axis for Humidity (%) on RIGHT side */}
+                {/* Trục Y cho Độ ẩm (%) nằm bên TẬP PHẢI */}
                 <YAxis
                   yAxisId="hum"
                   type="number"
@@ -271,37 +300,40 @@ export default function Dashboard() {
                   width={35}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#3b82f6', fontSize: 10, fontWeight: 700 }}
+                  tick={{ fill: SENSOR_COLORS.humidity.hex, fontSize: 10, fontWeight: 700 }}
                   domain={[(dataMin) => Math.floor(dataMin - 3), (dataMax) => Math.ceil(dataMax + 2)]}
                   tickFormatter={(val) => `${Number(val).toFixed(0)}%`}
                 />
 
-                {/* Hidden Y-Axis for Light (Lx) */}
+                {/* Trục Y ẩn cho Ánh sáng (Lx) */}
                 <YAxis
                   yAxisId="light"
                   hide={true}
                   domain={lightDomain}
                 />
 
+                {/* Khung chú thích thông số khi di chuột vào (Tooltip) */}
                 <Tooltip
                   contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #f1f5f9', fontSize: '12px', boxShadow: '0 8px 12px -3px rgba(0,0,0,0.08)' }}
                 />
+                
+                {/* Chú thích màu sắc tên đường đồ thị (Legend) */}
                 <Legend
                   wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                   iconType="line"
                 />
 
-                {/* Natural Waving Lines with Focused Magnified Oscillation */}
+                {/* 3 Đường Sóng uốn lượn tự nhiên (type="natural") */}
                 <Area
                   yAxisId="hum"
                   name="Độ ẩm (%)"
                   type="natural"
                   dataKey="humidity"
-                  stroke="#3b82f6"
+                  stroke={SENSOR_COLORS.humidity.hex}
                   strokeWidth={2.5}
                   fill="url(#humGradient)"
                   dot={false}
-                  activeDot={{ r: 5, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: SENSOR_COLORS.humidity.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
                 <Area
@@ -309,11 +341,11 @@ export default function Dashboard() {
                   name="Nhiệt độ (°C)"
                   type="natural"
                   dataKey="temperature"
-                  stroke="#f59e0b"
+                  stroke={SENSOR_COLORS.temperature.hex}
                   strokeWidth={2.5}
                   fill="url(#tempGradient)"
                   dot={false}
-                  activeDot={{ r: 5, fill: '#f59e0b', stroke: '#ffffff', strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: SENSOR_COLORS.temperature.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
                 <Area
@@ -321,11 +353,11 @@ export default function Dashboard() {
                   name="Ánh sáng (Lx)"
                   type="natural"
                   dataKey="light"
-                  stroke="#06b6d4"
+                  stroke={SENSOR_COLORS.light.hex}
                   strokeWidth={2.5}
                   fill="url(#lightGradient)"
                   dot={false}
-                  activeDot={{ r: 5, fill: '#06b6d4', stroke: '#ffffff', strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: SENSOR_COLORS.light.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
               </AreaChart>
@@ -333,7 +365,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Control Devices Section */}
+        {/* 6.4. KHỐI NÚT ĐIỀU KHIỂN THIẾT BỊ (CONTROL DEVICES SECTION) */}
         <div>
           <h2 className="text-sm font-bold text-slate-800 mb-3">Thiết bị điều khiển</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -350,6 +382,7 @@ export default function Dashboard() {
                       : 'bg-white border border-slate-100'
                   }`}
                 >
+                  {/* Tên và Trạng thái thiết bị */}
                   <div>
                     <h3 className="font-bold text-slate-800 text-base">{device.name}</h3>
                     <p className={`text-[11px] font-bold tracking-wider mt-1 ${isOn ? 'text-blue-500' : 'text-slate-400'}`}>
@@ -357,7 +390,7 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  {/* Toggle Button */}
+                  {/* Nút bấm Công tắc Gạt (Toggle Switch Button) */}
                   <button
                     onClick={() => handleToggleDevice(device)}
                     disabled={isLoading}

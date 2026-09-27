@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-const API_BASE = '/api/v1';
-
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  // Realtime Sensor State
+
+  // 1.1. State lưu thông số Cảm biến thời gian thực hiện tại (Nhiệt độ, Độ ẩm, Ánh sáng, Timestamp)
   const [sensors, setSensors] = useState({
     temperature: 28.5,
     humidity: 65,
@@ -14,16 +13,16 @@ export function DataProvider({ children }) {
     timestamp: new Date().toISOString()
   });
 
-  // Chart Data State
+  // 1.2. State lưu mảng dữ liệu mốc thời gian để vẽ Đồ thị xu hướng (Tối đa 20 điểm mới nhất)
   const [chartData, setChartData] = useState([]);
 
-  // Devices Status State
+  // 1.3. State lưu danh sách và trạng thái Bật/Tắt các thiết bị thông minh
   const [devices, setDevices] = useState([
     { id: 1, name: 'Đèn 1', state: 'ON' },
     { id: 2, name: 'Đèn 2', state: 'OFF' }
   ]);
 
-  // Sensor History State
+  // 1.4. Cache lưu dữ liệu Lịch sử Cảm biến (Dữ liệu bảng, Phân trang, Bộ lọc đang chọn, Trạng thái loading)
   const [sensorHistoryCache, setSensorHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
@@ -32,7 +31,7 @@ export function DataProvider({ children }) {
     loading: false
   });
 
-  // Device History State
+  // 1.5. Cache lưu dữ liệu Lịch sử Bật/Tắt Thiết bị
   const [deviceHistoryCache, setDeviceHistoryCache] = useState({
     data: [],
     pagination: { current_page: 1, total_pages: 1, total_records: 0 },
@@ -41,7 +40,8 @@ export function DataProvider({ children }) {
     loading: false
   });
 
-  // Silent Background Fetch for Sensor History
+
+  // 2.1. Hàm gọi API lấy dữ liệu Lịch sử Cảm biến theo Trang & Bộ lọc
   const fetchSensorHistory = useCallback(async (page = 1, filters = {}, limit = 10) => {
     setSensorHistoryCache((prev) => ({ ...prev, loading: true }));
     try {
@@ -67,12 +67,12 @@ export function DataProvider({ children }) {
         setSensorHistoryCache((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
-      console.error('Error fetching sensor history context:', err);
+      console.error('Lỗi khi tải lịch sử cảm biến từ Context:', err);
       setSensorHistoryCache((prev) => ({ ...prev, loading: false }));
     }
   }, []);
 
-  // Silent Background Fetch for Device History
+  // 2.2. Hàm gọi API lấy dữ liệu Lịch sử Thao tác Thiết bị theo Trang & Bộ lọc
   const fetchDeviceHistory = useCallback(async (page = 1, filters = {}, limit = 10) => {
     setDeviceHistoryCache((prev) => ({ ...prev, loading: true }));
     try {
@@ -98,13 +98,16 @@ export function DataProvider({ children }) {
         setDeviceHistoryCache((prev) => ({ ...prev, loading: false }));
       }
     } catch (err) {
-      console.error('Error fetching device history context:', err);
+      console.error('Lỗi khi tải lịch sử thiết bị từ Context:', err);
       setDeviceHistoryCache((prev) => ({ ...prev, loading: false }));
     }
   }, []);
 
-  // Pre-fetch Page 1 Data and Realtime status on App Startup
+  // =========================================================================
+  // KHỐI 3: KHỞI TẠO VÀ TẢI DỮ LIỆU SẴN KHI VỪA MỞ TRANG (PRE-FETCH EFFECT)
+  // =========================================================================
   useEffect(() => {
+    // 3.1. Lấy chỉ số Cảm biến thời gian thực hiện tại
     axios.get(`${API_BASE}/sensor/realtime`)
       .then((res) => {
         if (res.data && res.data.data) {
@@ -113,6 +116,7 @@ export function DataProvider({ children }) {
       })
       .catch(console.error);
 
+    // 3.2. Lấy danh sách và trạng thái các thiết bị
     axios.get(`${API_BASE}/devices/status`)
       .then((res) => {
         if (res.data && res.data.data) {
@@ -121,15 +125,19 @@ export function DataProvider({ children }) {
       })
       .catch(console.error);
 
+    // 3.3. Tải trước Trang 1 dữ liệu Lịch sử Cảm biến và Lịch sử Thiết bị
     fetchSensorHistory(1, {}, 10);
     fetchDeviceHistory(1, {}, 10);
   }, [fetchSensorHistory, fetchDeviceHistory]);
 
-  // Persistent Single WebSocket Connection
+  // =========================================================================
+  // KHỐI 4: KẾT NỐI WEBSOCKET REALTIME & TỰ ĐỘNG KẾT NỐI LẠI (WEBSOCKET LISTENER)
+  // =========================================================================
   useEffect(() => {
     let ws = null;
     let reconnectTimeout = null;
 
+    // Hàm thiết lập kết nối WebSocket tới Server Node.js
     const connect = () => {
       const isHttps = window.location.protocol === 'https:';
       const wsProtocol = isHttps ? 'wss:' : 'ws:';
@@ -139,13 +147,17 @@ export function DataProvider({ children }) {
 
       ws = new WebSocket(wsUrl);
 
+      // Lắng nghe các bản tin Realtime từ Server bắn về
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
+          
+          // CASE 1: Nhận cập nhật dữ liệu Cảm biến thời gian thực
           if (msg.type === 'SENSOR_UPDATE') {
             const newData = msg.data;
             setSensors(newData);
 
+            // Tự động thêm mốc điểm mới vào Đồ thị (giữ tối đa 20 điểm mới nhất)
             const timeStr = new Date(newData.timestamp).toLocaleTimeString('vi-VN', { hour12: false });
             setChartData((prev) => {
               const newPoint = {
@@ -162,16 +174,19 @@ export function DataProvider({ children }) {
               const updated = [...prev, newPoint];
               return updated.slice(-20);
             });
-          } else if (msg.type === 'DEVICE_UPDATE') {
+          } 
+          // CASE 2: Nhận cập nhật trạng thái Bật/Tắt Thiết bị
+          else if (msg.type === 'DEVICE_UPDATE') {
             setDevices((prev) =>
               prev.map((d) => (d.id === msg.data.device_id ? { ...d, state: msg.data.state } : d))
             );
           }
         } catch (err) {
-          console.error('WS Error:', err);
+          console.error('Lỗi khi xử lý dữ liệu WebSocket:', err);
         }
       };
 
+      // Tự động kết nối lại (Auto Reconnect) sau 3 giây nếu bị đứt kết nối WebSocket
       ws.onclose = () => {
         reconnectTimeout = setTimeout(connect, 3000);
       };
@@ -179,6 +194,7 @@ export function DataProvider({ children }) {
 
     connect();
 
+    // Dọn dẹp kết nối khi Component bị unmount
     return () => {
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
@@ -206,6 +222,6 @@ export function DataProvider({ children }) {
 
 export function useData() {
   const ctx = useContext(DataContext);
-  if (!ctx) throw new Error('useData must be used within DataProvider');
+  if (!ctx) throw new Error('useData phải được sử dụng bên trong DataProvider');
   return ctx;
 }
