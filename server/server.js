@@ -7,6 +7,7 @@ require('dotenv').config();
 const { initDatabase } = require('./config/db');
 const { getRealtimeSensor, getSensorHistory } = require('./controllers/sensorController');
 const { getDevicesStatus, controlDevice, getActionsHistory } = require('./controllers/deviceController');
+const { getUserProfile, updateUserProfile } = require('./controllers/userController');
 const { initMqtt } = require('./services/mqttService');
 
 const app = express();
@@ -48,6 +49,10 @@ app.get('/api/v1/sensor/history', getSensorHistory);
 app.get('/api/v1/devices/status', getDevicesStatus);
 app.post('/api/v1/devices/:id/control', controlDevice);
 app.get('/api/v1/actions/history', getActionsHistory);
+
+// Profile Endpoints
+app.get('/api/v1/user/profile', getUserProfile);
+app.put('/api/v1/user/profile', updateUserProfile);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

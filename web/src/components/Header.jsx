@@ -28,11 +28,6 @@ export default function Header({ title = 'Hệ Thống IoT', subtitle = 'Theo d�
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
           <span>{timeStr || 'Đang tải...'}</span>
         </div>
-
-        {/* User Pill */}
-        <div className="bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-semibold text-slate-700">
-          Xuân Quang
-        </div>
       </div>
     </header>
   );

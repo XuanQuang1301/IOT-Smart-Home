@@ -130,75 +130,43 @@ export function DataProvider({ children }) {
     fetchDeviceHistory(1, {}, 10);
   }, [fetchSensorHistory, fetchDeviceHistory]);
 
-  // =========================================================================
-  // KHỐI 4: KẾT NỐI WEBSOCKET REALTIME & TỰ ĐỘNG KẾT NỐI LẠI (WEBSOCKET LISTENER)
-  // =========================================================================
+  // KHỐI 4: TỰ ĐỘNG GỌI HTTP API LẤY DỮ LIỆU ĐỊNH KỲ MỖI 2 GIÂY (POLLING 2S)
   useEffect(() => {
-    let ws = null;
-    let reconnectTimeout = null;
-
-    // Hàm thiết lập kết nối WebSocket tới Server Node.js
-    const connect = () => {
-      const isHttps = window.location.protocol === 'https:';
-      const wsProtocol = isHttps ? 'wss:' : 'ws:';
-      const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'ws://localhost:5000'
-        : `${wsProtocol}//${window.location.host}/ws`;
-
-      ws = new WebSocket(wsUrl);
-
-      // Lắng nghe các bản tin Realtime từ Server bắn về
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          
-          // CASE 1: Nhận cập nhật dữ liệu Cảm biến thời gian thực
-          if (msg.type === 'SENSOR_UPDATE') {
-            const newData = msg.data;
-            setSensors(newData);
-
-            // Tự động thêm mốc điểm mới vào Đồ thị (giữ tối đa 20 điểm mới nhất)
-            const timeStr = new Date(newData.timestamp).toLocaleTimeString('vi-VN', { hour12: false });
-            setChartData((prev) => {
-              const newPoint = {
-                time: timeStr,
-                temperature: newData.temperature,
-                humidity: newData.humidity,
-                light: newData.light
-              };
-              if (prev.length > 0 && prev[prev.length - 1].time === timeStr) {
-                const updated = [...prev];
-                updated[updated.length - 1] = newPoint;
-                return updated;
-              }
-              const updated = [...prev, newPoint];
-              return updated.slice(-20);
-            });
-          } 
-          // CASE 2: Nhận cập nhật trạng thái Bật/Tắt Thiết bị
-          else if (msg.type === 'DEVICE_UPDATE') {
-            setDevices((prev) =>
-              prev.map((d) => (d.id === msg.data.device_id ? { ...d, state: msg.data.state } : d))
-            );
-          }
-        } catch (err) {
-          console.error('Lỗi khi xử lý dữ liệu WebSocket:', err);
+    const fetchInterval = setInterval(async () => {
+      try {
+        // 1. Tự động lấy chỉ số Cảm biến thời gian thực mỗi 2 giây
+        const resSensor = await axios.get(`${API_BASE}/sensor/realtime`);
+        if (resSensor.data && resSensor.data.data) {
+          const newData = resSensor.data.data;
+          setSensors(newData);
+          const timeStr = new Date(newData.timestamp).toLocaleTimeString('vi-VN', { hour12: false });
+          setChartData((prev) => {
+            const newPoint = {
+              time: timeStr,
+              temperature: newData.temperature,
+              humidity: newData.humidity,
+              light: newData.light
+            };
+            if (prev.length > 0 && prev[prev.length - 1].time === timeStr) {
+              const updated = [...prev];
+              updated[updated.length - 1] = newPoint;
+              return updated;
+            }
+            return [...prev, newPoint].slice(-20);
+          });
         }
-      };
 
-      // Tự động kết nối lại (Auto Reconnect) sau 3 giây nếu bị đứt kết nối WebSocket
-      ws.onclose = () => {
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
-    };
+        // 2. Tự động lấy trạng thái Bật/Tắt các Thiết bị mỗi 2 giây
+        const resDevice = await axios.get(`${API_BASE}/devices/status`);
+        if (resDevice.data && resDevice.data.data) {
+          setDevices(resDevice.data.data);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tự động lấy dữ liệu định kỳ (Polling 2s):', err);
+      }
+    }, 2000);
 
-    connect();
-
-    // Dọn dẹp kết nối khi Component bị unmount
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
+    return () => clearInterval(fetchInterval);
   }, []);
 
   return (

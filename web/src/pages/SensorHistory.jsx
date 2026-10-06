@@ -3,10 +3,6 @@ import Header from '../components/Header';
 import { useData } from '../context/DataContext';
 import { SENSOR_COLORS } from '../constants/colors';
 
-/**
- * Component Sub-header hiển thị Tiêu đề Cột Bảng hỗ trợ Sắp xếp (Sort Header)
- * Chức năng: Render ô <th> kèm 2 mũi tên sắp xếp (tăng dần / giảm dần). Khi người dùng click vào tiêu đề cột sẽ kích hoạt hàm onSort.
- */
 function SortHeader({ title, sortKey, sortConfig, onSort, alignRight = false, alignCenter = false, className = '' }) {
   const isActive = sortConfig.key === sortKey;
   const isAsc = isActive && sortConfig.direction === 'asc';
@@ -75,7 +71,6 @@ function SortHeader({ title, sortKey, sortConfig, onSort, alignRight = false, al
  * 4. Cho phép Sắp xếp (Sort) linh hoạt theo từng cột dữ liệu.
  */
 export default function SensorHistory() {
-  // Lấy dữ liệu cache lịch sử và hàm gọi API từ DataContext
   const { sensorHistoryCache, fetchSensorHistory } = useData();
 
   // State lưu loại lọc chọn từ dropdown: 'ALL' | 'TEMPERATURE' | 'HUMIDITY' | 'LIGHT' | 'TIME'
@@ -89,9 +84,7 @@ export default function SensorHistory() {
   const [pickerTime, setPickerTime] = useState('');
   const pickerContainerRef = React.useRef(null);
 
-  // =========================================================================
   // KHỐI 1: ĐỒNG BỘ GIỮA CHUỖI THỜI GIAN VÀ CÁC Ô NHẬP PICKER
-  // =========================================================================
   React.useEffect(() => {
     if (searchValue && (filterType === 'TIME' || filterType === 'ALL')) {
       const parts = searchValue.trim().split(/\s+/);
@@ -212,9 +205,7 @@ export default function SensorHistory() {
     }
   };
 
-  // =========================================================================
   // KHỐI 3: TIỆN ÍCH FORMAT ĐỊNH DẠNG VÀ RENDER BADGE ICON
-  // =========================================================================
   
   // Format Timestamp hiển thị định dạng YYYY/MM/DD HH:mm:ss
   const formatTimestamp = (ts) => {
@@ -274,9 +265,7 @@ export default function SensorHistory() {
     }
   };
 
-  // =========================================================================
-  // KHỐI 4: XỬ LÝ SẮP XẾP DỮ LIỆU BẢNG (CLIENT-SIDE SORTING)
-  // =========================================================================
+  // KHỐI 4: XỬ LÝ SẮP XẾP DỮ LIỆU BẢNG
   const [sortConfig, setSortConfig] = useState({ key: '', direction: null });
 
   // Đảo trạng thái sắp xếp: Chưa chọn -> Giảm dần (Desc) -> Tăng dần (Asc) -> Hủy sắp xếp
@@ -291,7 +280,7 @@ export default function SensorHistory() {
     });
   };
 
-  // Ghi nhớ và tự sắp xếp danh sách hiển thị khi sortConfig thay đổi
+  // Ghi nhớ và tự sắp xếp 
   const sortedData = React.useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return data;
     return [...data].sort((a, b) => {
@@ -319,12 +308,9 @@ export default function SensorHistory() {
   const startRecord = (pagination.current_page - 1) * limit + (data.length > 0 ? 1 : 0);
   const endRecord = (pagination.current_page - 1) * limit + data.length;
 
-  // =========================================================================
-  // KHỐI 5: GIAO DIỆN HIỂN THỊ (RENDER JSX)
-  // =========================================================================
+  // KHỐI 5: GIAO DIỆN HIỂN THỊ
   return (
     <div className="h-full p-5 flex flex-col min-h-0 overflow-hidden">
-      {/* 5.1. Header Tiêu đề trang */}
       <div className="flex-none">
         <Header title="Lịch Sử Cảm Biến" subtitle="Tra cứu dữ liệu đo đạc chi tiết của hệ thống" />
       </div>

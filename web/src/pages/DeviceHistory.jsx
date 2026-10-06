@@ -72,8 +72,8 @@ function SortHeader({ title, sortKey, sortConfig, onSort, alignRight = false, al
  * 3. Tích hợp bộ chọn Ngày & Giờ dạng lịch popover.
  * 4. Phân trang dữ liệu linh hoạt (Hiển thị 10, 20, 40 dòng/trang).
  */
+
 export default function DeviceHistory() {
-  // Lấy cache dữ liệu lịch sử thiết bị, hàm fetch và danh sách thiết bị từ DataContext
   const { deviceHistoryCache, fetchDeviceHistory, devices } = useData();
 
   // State lưu các giá trị lọc (Filter State)
@@ -142,11 +142,9 @@ export default function DeviceHistory() {
   const pagination = deviceHistoryCache.pagination || { current_page: 1, total_pages: 1, total_records: 0 };
   const activeFilters = deviceHistoryCache.appliedFilters || filters;
 
-  // =========================================================================
   // KHỐI 2: HÀM XỬ LÝ TÌM KIẾM, ĐẶT LẠI VÀ CHUYỂN TRANG
-  // =========================================================================
-  
-  // Đổi số dòng hiển thị / trang (Limit: 10, 20, 40)
+
+  // Đổi số dòng hiển thị / trang (Limit: 10, 20, 40), Phân trang 
   const handleLimitChange = (newLimit) => {
     fetchDeviceHistory(1, activeFilters, newLimit);
   };
@@ -175,10 +173,8 @@ export default function DeviceHistory() {
     }
   };
 
-  // =========================================================================
   // KHỐI 3: TIỆN ÍCH FORMAT ĐỊNH DẠNG VÀ RENDER BADGE TRẠNG THÁI
-  // =========================================================================
-
+  
   // Format timestamp hiển thị định dạng YYYY/MM/DD HH:mm:ss
   const formatTimestamp = (ts) => {
     if (!ts) return '';
@@ -246,7 +242,7 @@ export default function DeviceHistory() {
     });
   };
 
-  // Tự động sắp xếp mảng hiển thị theo cột được chọn
+  // Sắp xếp 
   const sortedData = React.useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return data;
     return [...data].sort((a, b) => {
@@ -277,9 +273,7 @@ export default function DeviceHistory() {
   const startRecord = (pagination.current_page - 1) * limit + (data.length > 0 ? 1 : 0);
   const endRecord = (pagination.current_page - 1) * limit + data.length;
 
-  // =========================================================================
-  // KHỐI 5: GIAO DIỆN HIỂN THỊ (RENDER JSX)
-  // =========================================================================
+  // KHỐI 5: GIAO DIỆN HIỂN THỊ 
   return (
     <div className="h-full p-5 flex flex-col min-h-0 overflow-hidden">
       {/* 5.1. Header tiêu đề trang */}

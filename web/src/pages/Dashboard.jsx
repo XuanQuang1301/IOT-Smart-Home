@@ -3,14 +3,14 @@ import axios from 'axios';
 import Header from '../components/Header';
 import { useData } from '../context/DataContext';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { SENSOR_COLORS, DEVICE_COLORS } from '../constants/colors';
+import { SENSOR_COLORS } from '../constants/colors';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
 export default function Dashboard() {
   const { sensors, chartData, setChartData, devices, setDevices } = useData();
   const [controlling, setControlling] = useState({});
-
+  // Lấy lịch sử cảm biến 
   useEffect(() => {
     if (chartData.length === 0) {
       axios.get(`${API_BASE}/sensors/history?deviceId=1&limit=20`)
@@ -23,9 +23,8 @@ export default function Dashboard() {
     }
   }, [chartData.length, setChartData]);
 
-  // KHỐI 2: HÀM XỬ LÝ BẬT / TẮT THIẾT BỊ 
+  // HÀM XỬ LÝ ĐIỀU KHIỂN BẬT / TẮT THIẾT BỊ (có thêm trạng thái khi đang nghỉ chuyển khoảng)
   const handleToggleDevice = async (device) => {
-    // Xác định hành động tiếp theo: nếu đang ON thì gửi TURN_OFF, ngược lại gửi TURN_ON
     const nextAction = device.state === 'ON' ? 'TURN_OFF' : 'TURN_ON';
     
     // Đánh dấu thiết bị này đang được điều khiển 
@@ -50,9 +49,7 @@ export default function Dashboard() {
     }
   };
 
-  // =========================================================================
-  // KHỐI 3: HÀM ĐỊNH DẠNG THỜI GIAN (TIME FORMATTER)
-  // =========================================================================
+  //  HÀM ĐỊNH DẠNG THỜI GIAN
   const formatTime = (ts) => {
     if (!ts) return new Date().toLocaleTimeString('vi-VN', { hour12: false });
     try {
@@ -64,10 +61,7 @@ export default function Dashboard() {
     }
   };
 
-  // =========================================================================
-  // KHỐI 4: TÍNH TOÁN KHOẢNG GIÁ TRỊ TRỤC Y TỰ ĐỘNG CHO ĐỒ THỊ (USEMEMO)
-  // Chức năng: Tự động tính min/max động để đường biểu đồ luôn uốn lượn đẹp mắt, không bị đè dập hay chạm mép
-  // =========================================================================
+  // KHỐI 4: TÍNH TOÁN KHOẢNG GIÁ TRỊ TRỤC Y TỰ ĐỘNG CHO ĐỒ THỊ
   const { tempDomain, humDomain, lightDomain } = React.useMemo(() => {
     if (!chartData || chartData.length === 0) {
       return {
@@ -107,25 +101,16 @@ export default function Dashboard() {
     };
   }, [chartData]);
 
-  // =========================================================================
-  // KHỐI 5: TÍNH TOÁN HIỆU ỨNG THẺ CẢM BIẾN (DYNAMIC UI CALCULATIONS)
-  // =========================================================================
-  // Phần trăm độ dài thanh tiến trình cho Nhiệt độ và Độ ẩm
+  // KHỐI 5: TÍNH TOÁN HIỆU ỨNG THẺ CẢM BIẾN
+  // Phần trăm độ dài thanh tiến trình cho Nhiệt độ  Độ ẩm
   const tempPercent = Math.min(100, Math.max(0, (Number(sensors.temperature || 0) / 50) * 100));
   const humPercent = Math.min(100, Math.max(0, Number(sensors.humidity || 0)));
 
-  // Tính toán màu nền động cho thẻ Ánh sáng dựa trên phần cứng ESP8266 (~40 Lux trở lên = Trời tối)
+  // Tính toán phần trăm thanh tiến trình cho Ánh sáng
   const lightVal = Number(sensors.light || 0);
   const lightPercent = Math.min(100, Math.max(0, (lightVal / 100) * 100));
-  const darknessRatio = Math.min(1, Math.max(0, (lightVal - 40) / 15)); // Ngưỡng: 30 lux = Sáng, >=45 lux = Tối
-  const isDarkCard = lightVal >= 40;
-  // Tự đổi màu background từ sáng sang giao diện tối (Dark Mode) nhịp nhàng
-  const lightCardBg = `rgb(${Math.round(255 - darknessRatio * 240)}, ${Math.round(255 - darknessRatio * 225)}, ${Math.round(255 - darknessRatio * 210)})`;
-  const lightCardBorder = isDarkCard ? '#1e293b' : '#f1f5f9';
 
-  // =========================================================================
-  // KHỐI 6: GIAO DIỆN HIỂN THỊ (RENDER JSX)
-  // =========================================================================
+  // KHỐI 6: GIAO DIỆN HIỂN THỊ 
   return (
     <div className="h-full p-6 overflow-y-auto flex flex-col justify-between">
       <div>
@@ -199,33 +184,22 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* THẺ 3: ÁNH SÁNG (Lux) - Thẻ tự động đổi màu nền khi Lux thay đổi */}
-          <div
-            className="p-4.5 rounded-2xl border shadow-sm card-hover flex flex-col justify-between transition-all duration-700 ease-in-out"
-            style={{
-              backgroundColor: lightCardBg,
-              borderColor: lightCardBorder
-            }}
-          >
+          {/* THẺ 3: ÁNH SÁNG (Lux) */}
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <span className={`text-[11px] font-bold uppercase tracking-wider transition-colors duration-700 ${isDarkCard ? 'text-slate-300' : 'text-slate-400'}`}>
-                    Ánh sáng
-                  </span>
-                  <span className={`px-1.5 py-0.2 text-[9px] font-extrabold rounded-md transition-all duration-700 ${isDarkCard ? 'bg-indigo-900/80 text-indigo-300 border border-indigo-700/50' : 'bg-amber-100/80 text-amber-700'}`}>
-                    {isDarkCard ? 'Tối 🌙' : 'Sáng ☀️'}
-                  </span>
-                </div>
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-colors duration-700 ${isDarkCard ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-600'}`}>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Ánh sáng
+                </span>
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md">
                   lux
                 </span>
               </div>
               <div className="flex items-baseline space-x-1 mt-2">
-                <span className={`text-3xl font-extrabold tracking-tight transition-colors duration-700 ${isDarkCard ? 'text-white' : 'text-slate-800'}`}>
+                <span className="text-3xl font-extrabold text-slate-800 tracking-tight">
                   {sensors.light}
                 </span>
-                <span className={`text-xs font-bold transition-colors duration-700 ${isDarkCard ? 'text-emerald-400' : 'text-emerald-500'}`}>
+                <span className="text-xs font-bold text-emerald-500">
                   lux
                 </span>
               </div>
@@ -233,19 +207,19 @@ export default function Dashboard() {
 
             <div className="mt-3">
               {/* Thanh tiến trình ánh sáng */}
-              <div className={`w-full h-2 rounded-full overflow-hidden mb-2 transition-colors duration-700 ${isDarkCard ? 'bg-slate-800' : 'bg-emerald-100/60'}`}>
+              <div className="w-full bg-emerald-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${isDarkCard ? 'bg-gradient-to-r from-cyan-400 to-emerald-400' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'}`}
+                  className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
                   style={{ width: `${lightPercent}%` }}
                 ></div>
               </div>
 
-              <div className={`text-[10px] flex items-center justify-between transition-colors duration-700 ${isDarkCard ? 'text-slate-400' : 'text-slate-400'}`}>
+              <div className="text-[10px] text-slate-400 flex items-center justify-between">
                 <span className="flex items-center">
-                  <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 transition-colors duration-700 ${isDarkCard ? 'bg-emerald-400 shadow-xs shadow-emerald-400' : 'bg-emerald-400'}`}></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span>
                   Cập nhật: {formatTime(sensors.timestamp)}
                 </span>
-                <span className={`font-mono font-bold transition-colors duration-700 ${isDarkCard ? 'text-emerald-400' : 'text-emerald-600/80'}`}>{Math.round(lightPercent)}%</span>
+                <span className="font-mono font-bold text-emerald-600/80">{Math.round(lightPercent)}%</span>
               </div>
             </div>
           </div>
@@ -312,9 +286,14 @@ export default function Dashboard() {
                   domain={lightDomain}
                 />
 
-                {/* Khung chú thích thông số khi di chuột vào (Tooltip) */}
+                {/* Khung chú thích thông số khi di chuột vào */}
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #f1f5f9', fontSize: '12px', boxShadow: '0 8px 12px -3px rgba(0,0,0,0.08)' }}
+                  contentStyle={{ 
+                    backgroundColor: '#ffffff', 
+                    borderRadius: '12px', 
+                    border: '1px solid #f1f5f9', 
+                    fontSize: '12px', 
+                    boxShadow: '0 8px 12px -3px rgba(0,0,0,0.08)' }}
                 />
                 
                 {/* Chú thích màu sắc tên đường đồ thị (Legend) */}
@@ -323,16 +302,18 @@ export default function Dashboard() {
                   iconType="line"
                 />
 
-                {/* 3 Đường Sóng uốn lượn tự nhiên (type="natural") */}
+                {/* 3 Đường Sóng */}
                 <Area
                   yAxisId="hum"
                   name="Độ ẩm (%)"
                   type="natural"
                   dataKey="humidity"
+                  // Màu sắc đường đồ thị
                   stroke={SENSOR_COLORS.humidity.hex}
                   strokeWidth={2.5}
                   fill="url(#humGradient)"
                   dot={false}
+                  // Tạo chấm tròn khi di chuột vào 
                   activeDot={{ r: 5, fill: SENSOR_COLORS.humidity.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
@@ -345,6 +326,7 @@ export default function Dashboard() {
                   strokeWidth={2.5}
                   fill="url(#tempGradient)"
                   dot={false}
+                  // Tạo chấm tròn khi di chuột vào 
                   activeDot={{ r: 5, fill: SENSOR_COLORS.temperature.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
@@ -376,8 +358,10 @@ export default function Dashboard() {
               return (
                 <div
                   key={device.id}
-                  className={`p-4.5 rounded-2xl transition-all duration-200 flex items-center justify-between shadow-sm ${
-                    isOn
+                  className={`p-4.5 rounded-2xl transition-all duration-300 flex items-center justify-between shadow-sm ${
+                    isLoading
+                      ? 'bg-amber-50/60 border-2 border-amber-300 ring-2 ring-amber-300/20 animate-pulse'
+                      : isOn
                       ? 'bg-white border-2 border-blue-500 ring-2 ring-blue-500/10'
                       : 'bg-white border border-slate-100'
                   }`}
@@ -385,8 +369,28 @@ export default function Dashboard() {
                   {/* Tên và Trạng thái thiết bị */}
                   <div>
                     <h3 className="font-bold text-slate-800 text-base">{device.name}</h3>
-                    <p className={`text-[11px] font-bold tracking-wider mt-1 ${isOn ? 'text-blue-500' : 'text-slate-400'}`}>
-                      {isOn ? 'ĐANG HOẠT ĐỘNG' : 'ĐANG TẮT'}
+                    <p
+                      className={`text-[11px] font-bold tracking-wider mt-1 flex items-center ${
+                        isLoading
+                          ? 'text-amber-600'
+                          : isOn
+                          ? 'text-blue-500'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <svg className="animate-spin mr-1 h-3 w-3 text-amber-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>{isOn ? 'ĐANG TẮT...' : 'ĐANG BẬT...'}</span>
+                        </>
+                      ) : isOn ? (
+                        'ĐANG HOẠT ĐỘNG'
+                      ) : (
+                        'ĐANG TẮT'
+                      )}
                     </p>
                   </div>
 
@@ -395,10 +399,21 @@ export default function Dashboard() {
                     onClick={() => handleToggleDevice(device)}
                     disabled={isLoading}
                     className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${
-                      isOn ? 'bg-blue-500 justify-end' : 'bg-slate-200 justify-start'
-                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      isLoading
+                        ? 'bg-amber-300 justify-center cursor-wait'
+                        : isOn
+                        ? 'bg-blue-500 justify-end cursor-pointer'
+                        : 'bg-slate-200 justify-start cursor-pointer'
+                    }`}
                   >
-                    <div className="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300"></div>
+                    <div className="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 flex items-center justify-center">
+                      {isLoading && (
+                        <svg className="animate-spin h-3.5 w-3.5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                    </div>
                   </button>
                 </div>
               );
