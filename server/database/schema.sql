@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `devices` (
   `name` VARCHAR(100) NOT NULL,
   `device_type` VARCHAR(30) NOT NULL,
   `pin` VARCHAR(10) NOT NULL,
-  `state` VARCHAR(10) DEFAULT 'OFF',
+  `state` VARCHAR(10) DEFAULT 'OFF' COMMENT 'Trạng thái: ON, OFF, LOADING',
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -66,10 +66,11 @@ INSERT INTO `users` (`id`, `username`, `password`, `full_name`, `role`) VALUES
 (1, 'admin', '$2b$10$e8wWwR3y1FvN0R1y...hash', 'Đặng Xuân Quang', 'ADMIN')
 ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
 
--- Devices Seed (Đèn 1, Đèn 2)
+-- Devices Seed (Đèn 1, Đèn 2, Đèn 3)
 INSERT INTO `devices` (`id`, `name`, `device_type`, `pin`, `state`) VALUES
 (1, 'Đèn 1', 'LIGHT', 'D1', 'ON'),
-(2, 'Đèn 2', 'LIGHT', 'D2', 'OFF')
+(2, 'Đèn 2', 'LIGHT', 'D2', 'OFF'),
+(3, 'Đèn 3', 'LIGHT', 'D7', 'OFF')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- Sensors Seed (Nhiệt độ = 1, Độ ẩm = 2, Ánh sáng = 3)

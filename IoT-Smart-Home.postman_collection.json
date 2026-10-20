@@ -196,6 +196,84 @@
 							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Điều khiển thiết bị thành công\",\n  \"data\": {\n    \"action_id\": 120,\n    \"device_id\": 1,\n    \"device_name\": \"Đèn 1\",\n    \"state\": \"ON\",\n    \"updated_at\": \"2026-10-06T14:40:00.000Z\"\n  }\n}"
 						}
 					]
+				},
+				{
+					"name": "4. Lấy 20 dữ liệu cảm biến gần nhất cho đồ thị (Dashboard Chart)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/v1/sensors/history?deviceId=1&limit=20",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"v1",
+								"sensors",
+								"history"
+							],
+							"query": [
+								{
+									"key": "deviceId",
+									"value": "1",
+									"description": "Tham số kích hoạt định dạng dữ liệu cho đồ thị Dashboard"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Số mốc thời gian gần nhất lấy cho đồ thị (mặc định 20)"
+								}
+							]
+						},
+						"description": "Lấy 20 điểm dữ liệu cảm biến gồm (temperature, humidity, light, time) để hiển thị lên đồ thị sóng của Dashboard."
+					},
+					"response": [
+						{
+							"name": "200 - Thành công",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:5000/api/v1/sensors/history?deviceId=1&limit=20",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "5000",
+									"path": [
+										"api",
+										"v1",
+										"sensors",
+										"history"
+									],
+									"query": [
+										{
+											"key": "deviceId",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"status\": \"success\",\n  \"data\": [\n    {\n      \"temperature\": 25.8,\n      \"humidity\": 67.6,\n      \"light\": 21,\n      \"time\": \"16:44:15\"\n    }\n  ]\n}"
+						}
+					]
 				}
 			]
 		},

@@ -32,7 +32,7 @@ export default function Profile() {
     {
       title: 'Postman API Docs',
       url: 'postman.com/workspace/contra-iot',
-      href: 'https://documenter.getpostman.com/view/50738470/2sBYHPz2PJ?utm_source=postman-web-app#247a543b-3db5-4846-80f0-930547aeee64',
+      href: 'https://documenter.getpostman.com/view/50738470/2sBYHPz2PJ',
       badge: 'API',
       badgeStyle: 'bg-amber-50 text-amber-700 border-amber-200',
       hoverBorder: 'hover:border-amber-400 hover:bg-amber-50/40'
@@ -40,7 +40,7 @@ export default function Profile() {
     {
       title: 'Báo cáo tiểu luận',
       url: 'drive.google.com/share/baocao-iot.pdf',
-      href: 'https://drive.google.com/file/d/1CR04Chi1kSS_oMJXt-aMR2OaDvLTRX2S/view?usp=sharing',
+      href: 'https://drive.google.com/file/d/1EGKvFel1jNRVDv827QU7Ulpj_LDuJySz/view?usp=sharing',
       badge: 'PDF',
       badgeStyle: 'bg-rose-50 text-rose-700 border-rose-200',
       hoverBorder: 'hover:border-rose-400 hover:bg-rose-50/40'

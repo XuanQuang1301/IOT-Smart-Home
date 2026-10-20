@@ -1,7 +1,7 @@
 import React from 'react';
 import avatarImg from '../assets/avatar.png';
 
-export default function Sidebar({ activeTab = '/', onTabChange, ipAddress = '192.168.1.105' }) {
+export default function Sidebar({ activeTab = '/', onTabChange }) {
   const navItems = [
     { path: '/', label: 'Dashboard' },
     { path: '/sensor-history', label: 'Lịch sử cảm biến' },
@@ -54,20 +54,6 @@ export default function Sidebar({ activeTab = '/', onTabChange, ipAddress = '192
             );
           })}
         </nav>
-      </div>
-
-      {/* Live Status Footer */}
-      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-        <div className="flex items-center justify-between text-[11px] mb-0.5">
-          <span className="text-slate-400 font-medium">Trạng thái</span>
-          <span className="flex items-center text-emerald-500 font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
-            LIVE
-          </span>
-        </div>
-        <div className="font-mono text-xs font-semibold text-slate-700 mt-0.5 tracking-wide">
-          {ipAddress}
-        </div>
       </div>
     </aside>
   );

@@ -90,6 +90,10 @@ export default function DeviceHistory() {
   const [pickerTime, setPickerTime] = useState('');
   const pickerContainerRef = React.useRef(null);
 
+  // State phục vụ tính năng copy thời gian
+  const [copiedId, setCopiedId] = useState(null);
+  const [copyToast, setCopyToast] = useState(null);
+
   // KHỐI 1: ĐỒNG BỘ GIỮA CHUỖI THỜI GIAN FILTER VÀ CÁC Ô NHẬP PICKER
   React.useEffect(() => {
     if (filters.time) {
@@ -195,9 +199,50 @@ export default function DeviceHistory() {
     }
   };
 
-  // Render Nhãn (Badge) Hành động (ON: Xanh lục, OFF: Đen/Xám)
+  // Hàm sao chép chuỗi thời gian vào Clipboard
+  const copyToClipboard = async (text, id) => {
+    if (!text) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopiedId(id);
+      setCopyToast(`Đã sao chép: ${text}`);
+      setTimeout(() => {
+        setCopiedId((prev) => (prev === id ? null : prev));
+      }, 2000);
+      setTimeout(() => {
+        setCopyToast(null);
+      }, 2500);
+    } catch (err) {
+      console.error('Lỗi sao chép:', err);
+    }
+  };
+
+  // Render Nhãn (Badge) Hành động (ON: Xanh lục, OFF: Đen/Xám, LOADING: Vàng hổ phách)
   const renderActionBadge = (actionStr) => {
     const isON = actionStr === 'TURN_ON' || actionStr === 'ON';
+    const isLoading = actionStr === 'LOADING' || actionStr === 'PENDING';
+
+    if (isLoading) {
+      return (
+        <span className="inline-block w-20 text-center py-1 rounded-lg text-xs font-extrabold font-mono tracking-wider bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+          LOADING
+        </span>
+      );
+    }
+
     return (
       <span
         className={`inline-block w-14 text-center py-1 rounded-lg text-xs font-extrabold font-mono tracking-wider shadow-2xs ${
@@ -211,9 +256,20 @@ export default function DeviceHistory() {
     );
   };
 
-  // Render Nhãn (Badge) Trạng thái thực thi (Thành công / Thất bại)
+  // Render Nhãn (Badge) Trạng thái thực thi (Thành công / Đang xử lý / Thất bại)
   const renderStatusBadge = (statusStr) => {
     const isSuccess = statusStr === 'SUCCESS' || statusStr === 'SUCCESSFUL';
+    const isPending = statusStr === 'PENDING' || statusStr === 'LOADING';
+
+    if (isPending) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+          <span className="w-1.5 h-1.5 rounded-full mr-1 bg-amber-500 animate-ping"></span>
+          Đang xử lý
+        </span>
+      );
+    }
+
     return (
       <span
         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
@@ -305,12 +361,13 @@ export default function DeviceHistory() {
                   <>
                     <option value="1">Đèn 1</option>
                     <option value="2">Đèn 2</option>
+                    <option value="3">Đèn 3</option>
                   </>
                 )}
               </select>
             </div>
 
-            {/* Hành động (TURN_ON / TURN_OFF) */}
+            {/* Hành động (TURN_ON / TURN_OFF / LOADING) */}
             <div className="w-full sm:w-32 shrink-0">
               <label className="block text-xs font-bold text-slate-900 mb-1">Hành động</label>
               <select
@@ -320,6 +377,7 @@ export default function DeviceHistory() {
               >
                 <option value="">Tất cả</option>
                 <option value="TURN_ON">Bật (ON)</option>
+                <option value="LOADING">Đang tải (LOADING)</option>
                 <option value="TURN_OFF">Tắt (OFF)</option>
               </select>
             </div>
@@ -334,6 +392,7 @@ export default function DeviceHistory() {
               >
                 <option value="">Tất cả</option>
                 <option value="SUCCESS">Thành công</option>
+                <option value="PENDING">Đang xử lý</option>
                 <option value="FAILED">Thất bại</option>
               </select>
             </div>
@@ -488,7 +547,7 @@ export default function DeviceHistory() {
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 shadow-sm">
               <tr className="text-[10px] font-extrabold tracking-wider text-slate-700 uppercase">
-                <SortHeader title="ID THIẾT BỊ" sortKey="device_id" sortConfig={sortConfig} onSort={handleSort} className="w-[18%]" />
+                <SortHeader title="ID THIẾT BỊ" sortKey="device_id" sortConfig={sortConfig} onSort={handleSort} className="w-[16%]" />
                 <th className="py-2.5 px-4 text-left text-[10px] font-extrabold tracking-wider text-slate-700 uppercase select-none w-[20%]">
                   HÀNH ĐỘNG
                 </th>
@@ -496,7 +555,7 @@ export default function DeviceHistory() {
                   TRẠNG THÁI
                 </th>
                 <SortHeader title="NGƯỜI THỰC HIỆN" sortKey="user" sortConfig={sortConfig} onSort={handleSort} className="w-[20%]" />
-                <SortHeader title="Thời gian" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} alignRight={true} className="w-[22%]" />
+                <SortHeader title="Thời gian" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} alignRight={true} className="w-[24%]" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
@@ -507,19 +566,54 @@ export default function DeviceHistory() {
                   </td>
                 </tr>
               ) : (
-                sortedData.map((row, idx) => (
-                  <tr key={`device-${row.id || idx}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-2.5 pl-11 pr-4 font-mono text-slate-600 text-xs truncate">{row.device_id || row.id}</td>
-                    <td className="py-2.5 px-4 truncate">{renderActionBadge(row.action)}</td>
-                    <td className="py-2.5 px-4 truncate">{renderStatusBadge(row.status)}</td>
-                    <td className="py-2.5 px-4 font-semibold text-slate-700 text-xs truncate">
-                      {'Đặng Xuân Quang'}
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500 truncate">
-                      {formatTimestamp(row.created_at)}
-                    </td>
-                  </tr>
-                ))
+                sortedData.map((row, idx) => {
+                  const timeStr = formatTimestamp(row.created_at);
+                  const rowKey = `device-${row.id || idx}-${idx}`;
+                  const isCopied = copiedId === rowKey;
+
+                  return (
+                    <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-2.5 pl-11 pr-4 font-mono text-slate-600 text-xs truncate">{row.device_id || row.id}</td>
+                      <td className="py-2.5 px-4 truncate">{renderActionBadge(row.action)}</td>
+                      <td className="py-2.5 px-4 truncate">{renderStatusBadge(row.status)}</td>
+                      <td className="py-2.5 px-4 font-semibold text-slate-700 text-xs truncate">
+                        {'Đặng Xuân Quang'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end space-x-1.5">
+                          <span>{timeStr}</span>
+                          {timeStr && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(timeStr, rowKey);
+                              }}
+                              title={isCopied ? "Đã sao chép!" : "Sao chép thời gian"}
+                              aria-label="Sao chép thời gian"
+                              className={`p-1 rounded transition-all duration-150 inline-flex items-center justify-center cursor-pointer ${
+                                isCopied
+                                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20'
+                                  : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100 active:scale-95'
+                              }`}
+                            >
+                              {isCopied ? (
+                                <svg className="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -605,6 +699,16 @@ export default function DeviceHistory() {
           </div>
         </div>
       </div>
+
+      {/* Toast thông báo sao chép thành công */}
+      {copyToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center space-x-2 bg-slate-900/90 text-white px-3.5 py-2 rounded-xl shadow-lg backdrop-blur-sm border border-slate-700/50 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>{copyToast}</span>
+        </div>
+      )}
     </div>
   );
 }

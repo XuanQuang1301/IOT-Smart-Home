@@ -19,7 +19,8 @@ export function DataProvider({ children }) {
   // 1.3. State lưu danh sách và trạng thái Bật/Tắt các thiết bị thông minh
   const [devices, setDevices] = useState([
     { id: 1, name: 'Đèn 1', state: 'ON' },
-    { id: 2, name: 'Đèn 2', state: 'OFF' }
+    { id: 2, name: 'Đèn 2', state: 'OFF' },
+    { id: 3, name: 'Đèn 3', state: 'OFF' }
   ]);
 
   // 1.4. Cache lưu dữ liệu Lịch sử Cảm biến (Dữ liệu bảng, Phân trang, Bộ lọc đang chọn, Trạng thái loading)

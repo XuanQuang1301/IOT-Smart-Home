@@ -10,6 +10,16 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 export default function Dashboard() {
   const { sensors, chartData, setChartData, devices, setDevices } = useData();
   const [controlling, setControlling] = useState({});
+  const [toast, setToast] = useState(null);
+
+  // Tự động đóng thông báo lỗi sau 4 giây
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Lấy lịch sử cảm biến 
   useEffect(() => {
     if (chartData.length === 0) {
@@ -23,26 +33,62 @@ export default function Dashboard() {
     }
   }, [chartData.length, setChartData]);
 
-  // HÀM XỬ LÝ ĐIỀU KHIỂN BẬT / TẮT THIẾT BỊ (có thêm trạng thái khi đang nghỉ chuyển khoảng)
+  // HÀM XỬ LÝ ĐIỀU KHIỂN BẬT / TẮT THIẾT BỊ (hỗ trợ trạng thái trung gian LOADING)
   const handleToggleDevice = async (device) => {
-    const nextAction = device.state === 'ON' ? 'TURN_OFF' : 'TURN_ON';
+    // Nếu thiết bị đang ở trạng thái LOADING hoặc đang gửi lệnh, không cho click lặp lại
+    if (device.state === 'LOADING' || controlling[device.id]) return;
+
+    // Lưu lại trạng thái ban đầu để rollback nếu thất bại
+    const prevState = device.state === 'ON' ? 'ON' : 'OFF';
+    const nextAction = prevState === 'ON' ? 'TURN_OFF' : 'TURN_ON';
+    const startTime = Date.now();
     
-    // Đánh dấu thiết bị này đang được điều khiển 
+    // Đánh dấu thiết bị đang điều khiển và cập nhật ngay state = 'LOADING'
     setControlling((prev) => ({ ...prev, [device.id]: true }));
+    setDevices((prev) =>
+      prev.map((d) => (d.id === device.id ? { ...d, state: 'LOADING' } : d))
+    );
 
     try {
-      // Gửi request POST tới Backend để điều khiển thiết bị
-      const res = await axios.post(`${API_BASE}/devices/${device.id}/control`, { action: nextAction });
+      // Gửi request POST tới Backend để điều khiển thiết bị (timeout 5000ms = 5s)
+      const res = await axios.post(
+        `${API_BASE}/devices/${device.id}/control`,
+        { action: nextAction },
+        { timeout: 5000 }
+      );
       
+      // Tạo độ trễ tối thiểu 500ms giữa các trạng thái để hiển thị rõ trạng thái LOADING
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 500 - elapsed));
+      }
+
       // Khi Backend trả về kết quả thành công, cập nhật ngay trạng thái thiết bị trong State
       if (res.data && res.data.data) {
         setDevices((prev) =>
           prev.map((d) => (d.id === device.id ? { ...d, state: res.data.data.state } : d))
         );
+      } else {
+        throw new Error('Không nhận được dữ liệu phản hồi từ thiết bị');
       }
     } catch (err) {
       console.error('Lỗi khi điều khiển thiết bị:', err);
-      alert('Không thể điều khiển thiết bị! Vui lòng thử lại.');
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 500 - elapsed));
+      }
+
+      // Khôi phục lại trạng thái cũ của thiết bị (Rollback)
+      setDevices((prev) =>
+        prev.map((d) => (d.id === device.id ? { ...d, state: prevState } : d))
+      );
+
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message && err.message.includes('timeout')) || elapsed >= 5000;
+      const errorMsg = isTimeout
+        ? `Điều khiển ${device.name} thất bại! Quá thời gian 5s không có phản hồi từ thiết bị.`
+        : `Thao tác bật/tắt ${device.name} thất bại! Vui lòng thử lại sau.`;
+
+      setToast({ type: 'error', message: errorMsg });
     } finally {
       // Mở khóa nút bấm thiết bị sau khi xử lý xong
       setControlling((prev) => ({ ...prev, [device.id]: false }));
@@ -112,7 +158,23 @@ export default function Dashboard() {
 
   // KHỐI 6: GIAO DIỆN HIỂN THỊ 
   return (
-    <div className="h-full p-6 overflow-y-auto flex flex-col justify-between">
+    <div className="h-full p-6 overflow-y-auto flex flex-col justify-between relative">
+      {/* Toast Thông báo Thất bại / Lỗi (Khung tĩnh, đơn giản, không biểu tượng X đỏ phía trước) */}
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 flex items-center p-3.5 text-rose-800 rounded-2xl bg-white border border-rose-200 shadow-md space-x-3 max-w-md">
+          <div className="text-xs font-bold leading-relaxed">{toast.message}</div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-auto -mx-1.5 -my-1.5 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg p-1.5 hover:bg-slate-100 inline-flex items-center justify-center h-7 w-7 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div>
         {/* 6.1. Header Tiêu đề trang */}
         <Header title="Hệ Thống IoT" subtitle="Theo dõi và điều khiển thiết bị thời gian thực" />
@@ -279,11 +341,12 @@ export default function Dashboard() {
                   tickFormatter={(val) => `${Number(val).toFixed(0)}%`}
                 />
 
-                {/* Trục Y ẩn cho Ánh sáng (Lx) */}
+                {/* Trục Y ẩn cho Ánh sáng (Lx) - Đảo ngược theo yêu cầu: khi che tối / giá trị tăng thì đường đi xuống */}
                 <YAxis
                   yAxisId="light"
                   hide={true}
                   domain={lightDomain}
+                  reversed={true}
                 />
 
                 {/* Khung chú thích thông số khi di chuột vào */}
@@ -340,6 +403,7 @@ export default function Dashboard() {
                   fill="url(#lightGradient)"
                   dot={false}
                   activeDot={{ r: 5, fill: SENSOR_COLORS.light.hex, stroke: '#ffffff', strokeWidth: 2 }}
+                  baseValue={lightDomain[1]}
                   isAnimationActive={true}
                 />
               </AreaChart>
@@ -350,17 +414,17 @@ export default function Dashboard() {
         {/* 6.4. KHỐI NÚT ĐIỀU KHIỂN THIẾT BỊ (CONTROL DEVICES SECTION) */}
         <div>
           <h2 className="text-sm font-bold text-slate-800 mb-3">Thiết bị điều khiển</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {devices.map((device) => {
               const isOn = device.state === 'ON';
-              const isLoading = controlling[device.id];
+              const isLoading = device.state === 'LOADING' || controlling[device.id];
 
               return (
                 <div
                   key={device.id}
                   className={`p-4.5 rounded-2xl transition-all duration-300 flex items-center justify-between shadow-sm ${
                     isLoading
-                      ? 'bg-amber-50/60 border-2 border-amber-300 ring-2 ring-amber-300/20 animate-pulse'
+                      ? 'bg-amber-50/70 border-2 border-amber-400 ring-2 ring-amber-300/30'
                       : isOn
                       ? 'bg-white border-2 border-blue-500 ring-2 ring-blue-500/10'
                       : 'bg-white border border-slate-100'
@@ -380,11 +444,11 @@ export default function Dashboard() {
                     >
                       {isLoading ? (
                         <>
-                          <svg className="animate-spin mr-1 h-3 w-3 text-amber-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin mr-1.5 h-3.5 w-3.5 text-amber-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          <span>{isOn ? 'ĐANG TẮT...' : 'ĐANG BẬT...'}</span>
+                          <span>ĐANG XỬ LÝ... (LOADING)</span>
                         </>
                       ) : isOn ? (
                         'ĐANG HOẠT ĐỘNG'
@@ -394,19 +458,22 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  {/* Nút bấm Công tắc Gạt (Toggle Switch Button) */}
+                  {/* Nút bấm Công tắc Gạt 3 nấc: OFF (trái) - LOADING (giữa) - ON (phải) */}
                   <button
                     onClick={() => handleToggleDevice(device)}
                     disabled={isLoading}
-                    className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 ${
+                    title={isLoading ? 'Đang chuyển đổi trạng thái...' : (isOn ? 'Nhấn để tắt thiết bị' : 'Nhấn để bật thiết bị')}
+                    className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-300 ${
                       isLoading
-                        ? 'bg-amber-300 justify-center cursor-wait'
+                        ? 'bg-amber-400 justify-center cursor-wait shadow-inner'
                         : isOn
-                        ? 'bg-blue-500 justify-end cursor-pointer'
-                        : 'bg-slate-200 justify-start cursor-pointer'
+                        ? 'bg-blue-500 justify-end cursor-pointer shadow-sm hover:bg-blue-600'
+                        : 'bg-slate-200 justify-start cursor-pointer hover:bg-slate-300'
                     }`}
                   >
-                    <div className="w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 flex items-center justify-center">
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
+                      isLoading ? 'scale-95' : 'scale-100'
+                    }`}>
                       {isLoading && (
                         <svg className="animate-spin h-3.5 w-3.5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

@@ -84,6 +84,10 @@ export default function SensorHistory() {
   const [pickerTime, setPickerTime] = useState('');
   const pickerContainerRef = React.useRef(null);
 
+  // State phục vụ tính năng copy thời gian
+  const [copiedId, setCopiedId] = useState(null);
+  const [copyToast, setCopyToast] = useState(null);
+
   // KHỐI 1: ĐỒNG BỘ GIỮA CHUỖI THỜI GIAN VÀ CÁC Ô NHẬP PICKER
   React.useEffect(() => {
     if (searchValue && (filterType === 'TIME' || filterType === 'ALL')) {
@@ -224,6 +228,37 @@ export default function SensorHistory() {
       return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
     } catch {
       return ts;
+    }
+  };
+
+  // Hàm sao chép chuỗi thời gian vào Clipboard
+  const copyToClipboard = async (text, id) => {
+    if (!text) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopiedId(id);
+      setCopyToast(`Đã sao chép: ${text}`);
+      setTimeout(() => {
+        setCopiedId((prev) => (prev === id ? null : prev));
+      }, 2000);
+      setTimeout(() => {
+        setCopyToast(null);
+      }, 2500);
+    } catch (err) {
+      console.error('Lỗi sao chép:', err);
     }
   };
 
@@ -524,18 +559,53 @@ export default function SensorHistory() {
                   </td>
                 </tr>
               ) : (
-                sortedData.map((row, idx) => (
-                  <tr key={`sensor-${row.id || idx}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-2.5 pl-11 pr-4 font-mono text-slate-600 text-xs truncate">{row.sensor_id}</td>
-                    <td className="py-2.5 px-4 truncate">{renderBadge(row.sensor_type || row.name)}</td>
-                    <td className="py-2.5 px-4 font-bold text-slate-800 text-xs truncate">
-                      {row.value} <span className="font-semibold text-slate-500 text-[11px] ml-0.5">{row.unit}</span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500 truncate">
-                      {formatTimestamp(row.created_at)}
-                    </td>
-                  </tr>
-                ))
+                sortedData.map((row, idx) => {
+                  const timeStr = formatTimestamp(row.created_at);
+                  const rowKey = `sensor-${row.id || idx}-${idx}`;
+                  const isCopied = copiedId === rowKey;
+
+                  return (
+                    <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-2.5 pl-11 pr-4 font-mono text-slate-600 text-xs truncate">{row.sensor_id}</td>
+                      <td className="py-2.5 px-4 truncate">{renderBadge(row.sensor_type || row.name)}</td>
+                      <td className="py-2.5 px-4 font-bold text-slate-800 text-xs truncate">
+                        {row.value} <span className="font-semibold text-slate-500 text-[11px] ml-0.5">{row.unit}</span>
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end space-x-1.5">
+                          <span>{timeStr}</span>
+                          {timeStr && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(timeStr, rowKey);
+                              }}
+                              title={isCopied ? "Đã sao chép!" : "Sao chép thời gian"}
+                              aria-label="Sao chép thời gian"
+                              className={`p-1 rounded transition-all duration-150 inline-flex items-center justify-center cursor-pointer ${
+                                isCopied
+                                  ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20'
+                                  : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100 active:scale-95'
+                              }`}
+                            >
+                              {isCopied ? (
+                                <svg className="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -621,6 +691,16 @@ export default function SensorHistory() {
           </div>
         </div>
       </div>
+
+      {/* Toast thông báo sao chép thành công */}
+      {copyToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center space-x-2 bg-slate-900/90 text-white px-3.5 py-2 rounded-xl shadow-lg backdrop-blur-sm border border-slate-700/50 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>{copyToast}</span>
+        </div>
+      )}
     </div>
   );
 }

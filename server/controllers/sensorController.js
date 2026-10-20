@@ -37,7 +37,7 @@ async function getRealtimeSensor(req, res) {
   }
 }
 
-// GET /api/v1/sensor/history or /api/v1/sensors/history
+// GET /api/v1/sensors/history
 async function getSensorHistory(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;

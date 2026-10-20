@@ -1,5 +1,5 @@
 const { pool } = require('../config/db');
-const { sendMqttControl } = require('../services/mqttService');
+const { sendMqttControl, waitForMqttDeviceResponse } = require('../services/mqttService');
 
 // GET /api/v1/devices/status
 async function getDevicesStatus(req, res) {
@@ -32,6 +32,7 @@ async function controlDevice(req, res) {
     }
 
     const device = deviceRows[0];
+    const prevState = device.state || 'OFF';
     const isTurningOn = (action === 'TURN_ON' || action === 'ON');
     const targetState = isTurningOn ? 'ON' : 'OFF';
     const actionStr = action.startsWith('TURN_') ? action : `TURN_${action}`;
@@ -42,39 +43,86 @@ async function controlDevice(req, res) {
       mqttCmd = isTurningOn ? 'LED1_ON' : 'LED1_OFF';
     } else if (deviceId === 2) {
       mqttCmd = isTurningOn ? 'LED2_ON' : 'LED2_OFF';
+    } else if (deviceId === 3) {
+      mqttCmd = isTurningOn ? 'LED3_ON' : 'LED3_OFF';
     }
 
-    // 1. Insert PENDING action into DB
-    const [insertResult] = await pool.query(
+    // 1. Cập nhật trạng thái thiết bị sang LOADING trong DB ngay khi tiếp nhận lệnh
+    await pool.query("UPDATE devices SET state = 'LOADING', updated_at = NOW() WHERE id = ?", [deviceId]);
+
+    // 2. Ghi nhận trạng thái trung gian LOADING vào lịch sử thao tác thiết bị
+    await pool.query(
       'INSERT INTO actions_history (device_id, user_id, action, status, time) VALUES (?, ?, ?, ?, NOW())',
-      [deviceId, 1, actionStr, 'PENDING']
+      [deviceId, 1, 'LOADING', 'SUCCESS']
     );
-    const actionId = insertResult.insertId;
 
-    // 2. Publish MQTT Command to ESP8266
-    if (mqttCmd) {
-      sendMqttControl(mqttCmd);
+    // 3. Publish MQTT Command to ESP8266
+    const sent = mqttCmd ? sendMqttControl(mqttCmd) : false;
+    if (!sent) {
+      // Rollback trạng thái cũ nếu không gửi được MQTT và ghi nhận FAILED
+      await pool.query('UPDATE devices SET state = ?, updated_at = NOW() WHERE id = ?', [prevState, deviceId]);
+      await pool.query(
+        'INSERT INTO actions_history (device_id, user_id, action, status, time) VALUES (?, ?, ?, ?, NOW())',
+        [deviceId, 1, actionStr, 'FAILED']
+      );
+      return res.status(500).json({ status: 'error', message: 'Không thể kết nối đến MQTT Broker' });
     }
 
-    // 3. Optimistically update local database state
-    await pool.query('UPDATE devices SET state = ?, updated_at = NOW() WHERE id = ?', [targetState, deviceId]);
-    await pool.query('UPDATE actions_history SET status = ? WHERE id = ?', ['SUCCESS', actionId]);
+    // 4. Chờ phản hồi thực tế từ phần cứng ESP8266 qua MQTT (tối đa 4.5s)
+    const espState = await waitForMqttDeviceResponse(deviceId, 4500);
 
-    const nowIso = new Date().toISOString();
+    if (espState !== null) {
+      // Phần cứng đã phản hồi thành công qua topic device_response!
+      const actualState = espState || targetState;
+      await pool.query('UPDATE devices SET state = ?, updated_at = NOW() WHERE id = ?', [actualState, deviceId]);
 
-    return res.json({
-      status: 'success',
-      message: 'Điều khiển thiết bị thành công',
-      data: {
-        action_id: actionId,
-        device_id: deviceId,
-        device_name: device.name,
-        state: targetState,
-        updated_at: nowIso
-      }
-    });
+      // Ghi nhận hành động hoàn tất (TURN_ON / TURN_OFF) vào lịch sử với status = 'SUCCESS'
+      const [insertResult] = await pool.query(
+        'INSERT INTO actions_history (device_id, user_id, action, status, time) VALUES (?, ?, ?, ?, NOW())',
+        [deviceId, 1, actionStr, 'SUCCESS']
+      );
+      const actionId = insertResult.insertId;
+
+      const nowIso = new Date().toISOString();
+
+      return res.json({
+        status: 'success',
+        message: 'Điều khiển thiết bị thành công',
+        data: {
+          action_id: actionId,
+          device_id: deviceId,
+          device_name: device.name,
+          state: actualState,
+          updated_at: nowIso
+        }
+      });
+    } else {
+      // Quá thời gian 4.5s mà ESP8266 KHÔNG phản hồi trên MQTT -> Rollback trạng thái cũ và ghi FAILED
+      await pool.query('UPDATE devices SET state = ?, updated_at = NOW() WHERE id = ?', [prevState, deviceId]);
+      await pool.query(
+        'INSERT INTO actions_history (device_id, user_id, action, status, time) VALUES (?, ?, ?, ?, NOW())',
+        [deviceId, 1, actionStr, 'FAILED']
+      );
+
+      return res.status(504).json({
+        status: 'error',
+        message: 'Thiết bị ESP8266 không phản hồi sau 5s! Thao tác thất bại.'
+      });
+    }
   } catch (error) {
     console.error('Error controlling device:', error);
+    try {
+      if (req.params && req.params.id) {
+        // Cố gắng rollback trạng thái nếu có lỗi ngoại lệ
+        const devId = parseInt(req.params.id);
+        const [devRows] = await pool.query('SELECT state FROM devices WHERE id = ?', [devId]);
+        if (devRows.length > 0 && devRows[0].state === 'LOADING') {
+          await pool.query("UPDATE devices SET state = 'OFF', updated_at = NOW() WHERE id = ?", [devId]);
+        }
+      }
+    } catch (e) {
+      console.error('Error rolling back state:', e);
+    }
     return res.status(500).json({ status: 'error', message: 'Điều khiển thiết bị thất bại' });
   }
 }
@@ -99,12 +147,26 @@ async function getActionsHistory(req, res) {
       queryParams.push(device_id);
     }
     if (status) {
-      whereConditions.push('ah.status = ?');
-      queryParams.push(status);
+      if (status === 'SUCCESS' || status === 'SUCCESSFUL') {
+        whereConditions.push('(ah.status = "SUCCESS" OR ah.status = "SUCCESSFUL")');
+      } else if (status === 'PENDING' || status === 'LOADING') {
+        whereConditions.push('(ah.status = "PENDING" OR ah.action = "LOADING")');
+      } else {
+        whereConditions.push('ah.status = ?');
+        queryParams.push(status);
+      }
     }
     if (action) {
-      whereConditions.push('ah.action = ?');
-      queryParams.push(action);
+      if (action === 'TURN_ON' || action === 'ON') {
+        whereConditions.push('(ah.action = "TURN_ON" OR ah.action = "ON")');
+      } else if (action === 'TURN_OFF' || action === 'OFF') {
+        whereConditions.push('(ah.action = "TURN_OFF" OR ah.action = "OFF")');
+      } else if (action === 'LOADING') {
+        whereConditions.push('(ah.action = "LOADING" OR ah.status = "PENDING")');
+      } else {
+        whereConditions.push('ah.action = ?');
+        queryParams.push(action);
+      }
     }
     if (time) {
       const trimmed = time.trim();
