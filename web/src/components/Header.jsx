@@ -16,16 +16,16 @@ export default function Header({ title = 'Hệ Thống IoT', subtitle = 'Theo d�
   }, []);
 
   return (
-    <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+    <header className="flex flex-row items-center justify-between gap-2 mb-2">
       <div>
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h1>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+        <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">{title}</h1>
+        {subtitle && <p className="text-[11px] text-slate-400">{subtitle}</p>}
       </div>
 
-      <div className="flex items-center space-x-3 self-end md:self-auto">
+      <div className="flex items-center space-x-2">
         {/* Realtime Clock Pill */}
-        <div className="bg-white px-3.5 py-1.5 rounded-full border border-slate-100 shadow-sm text-xs font-mono text-slate-600 font-semibold flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+        <div className="bg-white px-3 py-1 rounded-full border border-slate-100 shadow-xs text-[11px] font-mono text-slate-600 font-semibold flex items-center space-x-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
           <span>{timeStr || 'Đang tải...'}</span>
         </div>
       </div>

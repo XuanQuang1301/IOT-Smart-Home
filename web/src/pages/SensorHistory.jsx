@@ -176,6 +176,10 @@ export default function SensorHistory() {
       queryFilters.sensor_type = 'LIGHT';
       queryFilters.sensor_id = '3';
       queryFilters.value = inputVal;
+    } else if (filterType === 'WIND') {
+      queryFilters.sensor_type = 'WIND';
+      queryFilters.sensor_id = '4';
+      queryFilters.value = inputVal;
     } else {
       // filterType === 'ALL' (Tất cả cảm biến)
       if (inputVal) {
@@ -295,6 +299,16 @@ export default function SensorHistory() {
             Ánh sáng
           </span>
         );
+      case 'WIND':
+      case 'Tốc độ gió':
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 ${SENSOR_COLORS.wind.bgLight} ${SENSOR_COLORS.wind.textDarker} rounded-full text-[11px] font-semibold ${SENSOR_COLORS.wind.border} shadow-2xs`}>
+            <svg className={`w-3.5 h-3.5 mr-1 ${SENSOR_COLORS.wind.textMain} shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+            </svg>
+            Tốc độ gió
+          </span>
+        );
       default:
         return <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[11px] font-semibold">{sensorType}</span>;
     }
@@ -367,6 +381,7 @@ export default function SensorHistory() {
                 <option value="TEMPERATURE">Nhiệt độ (°C)</option>
                 <option value="HUMIDITY">Độ ẩm (%)</option>
                 <option value="LIGHT">Ánh sáng (lux)</option>
+                <option value="WIND">Tốc độ gió (km/h)</option>
                 <option value="TIME">Thời gian</option>
               </select>
             </div>
@@ -382,6 +397,8 @@ export default function SensorHistory() {
                   ? 'Giá trị (Độ ẩm)'
                   : filterType === 'LIGHT'
                   ? 'Giá trị (Ánh sáng)'
+                  : filterType === 'WIND'
+                  ? 'Giá trị (Tốc độ gió)'
                   : 'Giá trị / Thời gian'}
               </label>
 

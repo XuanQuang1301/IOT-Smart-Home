@@ -32,6 +32,10 @@ async function controlDevice(req, res) {
     }
 
     const device = deviceRows[0];
+    if (device.device_type === 'ALERT_LIGHT' || deviceId === 4) {
+      return res.status(400).json({ status: 'error', message: 'Đèn cảnh báo hoạt động tự động, không thể điều khiển thủ công' });
+    }
+
     const prevState = device.state || 'OFF';
     const isTurningOn = (action === 'TURN_ON' || action === 'ON');
     const targetState = isTurningOn ? 'ON' : 'OFF';
@@ -209,7 +213,7 @@ async function getActionsHistory(req, res) {
         ah.device_id,
         d.name as device_name,
         ah.action,
-        COALESCE(u.username, 'admin') as user_name,
+        CASE WHEN ah.user_id IS NULL THEN 'Hệ thống' ELSE COALESCE(u.username, 'admin') END as user_name,
         ah.status,
         DATE_FORMAT(CONVERT_TZ(ah.time, @@session.time_zone, '+07:00'), '%Y-%m-%d %H:%i:%s') as created_at
       FROM actions_history ah

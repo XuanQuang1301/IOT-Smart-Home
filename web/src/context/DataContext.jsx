@@ -5,11 +5,12 @@ const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
 
-  // 1.1. State lưu thông số Cảm biến thời gian thực hiện tại (Nhiệt độ, Độ ẩm, Ánh sáng, Timestamp)
+  // 1.1. State lưu thông số Cảm biến thời gian thực hiện tại (Nhiệt độ, Độ ẩm, Ánh sáng, Gió, Timestamp)
   const [sensors, setSensors] = useState({
     temperature: 28.5,
     humidity: 65,
     light: 720,
+    wind: 15.0,
     timestamp: new Date().toISOString()
   });
 
@@ -20,8 +21,12 @@ export function DataProvider({ children }) {
   const [devices, setDevices] = useState([
     { id: 1, name: 'Đèn 1', state: 'ON' },
     { id: 2, name: 'Đèn 2', state: 'OFF' },
-    { id: 3, name: 'Đèn 3', state: 'OFF' }
+    { id: 3, name: 'Đèn 3', state: 'OFF' },
+    { id: 4, name: 'Đèn cảnh báo', state: 'OFF', device_type: 'ALERT_LIGHT' }
   ]);
+  // 1.4. State lưu ngưỡng cảnh báo gió được đồng bộ toàn cục
+  const [windThreshold, setWindThreshold] = useState(300);
+
 
   // 1.4. Cache lưu dữ liệu Lịch sử Cảm biến (Dữ liệu bảng, Phân trang, Bộ lọc đang chọn, Trạng thái loading)
   const [sensorHistoryCache, setSensorHistoryCache] = useState({
@@ -103,6 +108,21 @@ export function DataProvider({ children }) {
       setDeviceHistoryCache((prev) => ({ ...prev, loading: false }));
     }
   }, []);
+  // 2.3. Hàm gọi API lấy cấu hình ngưỡng cảnh báo
+  const fetchAlertSettings = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/alerts/settings`);
+      if (res.data && res.data.data) {
+        const windCfg = res.data.data.find((s) => s.sensor_id === 4);
+        if (windCfg && Number.isFinite(windCfg.threshold)) {
+          setWindThreshold(windCfg.threshold);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải cài đặt cảnh báo:', err);
+    }
+  }, []);
+
 
   // =========================================================================
   // KHỐI 3: KHỞI TẠO VÀ TẢI DỮ LIỆU SẴN KHI VỪA MỞ TRANG (PRE-FETCH EFFECT)
@@ -129,7 +149,9 @@ export function DataProvider({ children }) {
     // 3.3. Tải trước Trang 1 dữ liệu Lịch sử Cảm biến và Lịch sử Thiết bị
     fetchSensorHistory(1, {}, 10);
     fetchDeviceHistory(1, {}, 10);
-  }, [fetchSensorHistory, fetchDeviceHistory]);
+    // 3.4. Tải cấu hình ngưỡng cảnh báo
+    fetchAlertSettings();
+  }, [fetchSensorHistory, fetchDeviceHistory, fetchAlertSettings]);
 
   // KHỐI 4: TỰ ĐỘNG GỌI HTTP API LẤY DỮ LIỆU ĐỊNH KỲ MỖI 2 GIÂY (POLLING 2S)
   useEffect(() => {
@@ -142,18 +164,36 @@ export function DataProvider({ children }) {
           setSensors(newData);
           const timeStr = new Date(newData.timestamp).toLocaleTimeString('vi-VN', { hour12: false });
           setChartData((prev) => {
-            const newPoint = {
+            if (prev.length === 0) {
+              return [{
+                time: timeStr,
+                temperature: newData.temperature,
+                humidity: newData.humidity,
+                light: newData.light,
+                wind: newData.wind ?? 0
+              }];
+            }
+            const lastPoint = prev[prev.length - 1];
+            // Nếu cùng mốc thời gian (cùng 1 giây), chỉ cập nhật lại điểm cuối cùng
+            if (lastPoint.time === timeStr) {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                time: timeStr,
+                temperature: newData.temperature,
+                humidity: newData.humidity,
+                light: newData.light,
+                wind: newData.wind ?? 0
+              };
+              return updated;
+            }
+            // Mốc thời gian mới: thêm vào cuối và giữ tối đa 20 điểm mới nhất
+            return [...prev, {
               time: timeStr,
               temperature: newData.temperature,
               humidity: newData.humidity,
-              light: newData.light
-            };
-            if (prev.length > 0 && prev[prev.length - 1].time === timeStr) {
-              const updated = [...prev];
-              updated[updated.length - 1] = newPoint;
-              return updated;
-            }
-            return [...prev, newPoint].slice(-20);
+              light: newData.light,
+              wind: newData.wind ?? 0
+            }].slice(-20);
           });
         }
 
@@ -162,6 +202,8 @@ export function DataProvider({ children }) {
         if (resDevice.data && resDevice.data.data) {
           setDevices(resDevice.data.data);
         }
+        // 3. Tự động đồng bộ ngưỡng cảnh báo định kỳ
+        fetchAlertSettings();
       } catch (err) {
         console.error('Lỗi khi tự động lấy dữ liệu định kỳ (Polling 2s):', err);
       }
@@ -181,7 +223,10 @@ export function DataProvider({ children }) {
         sensorHistoryCache,
         fetchSensorHistory,
         deviceHistoryCache,
-        fetchDeviceHistory
+        fetchDeviceHistory,
+        windThreshold,
+        setWindThreshold,
+        fetchAlertSettings,
       }}
     >
       {children}

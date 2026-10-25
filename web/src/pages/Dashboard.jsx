@@ -7,10 +7,19 @@ import { SENSOR_COLORS } from '../constants/colors';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
-export default function Dashboard() {
-  const { sensors, chartData, setChartData, devices, setDevices } = useData();
+export default function Dashboard({ onNavigateToWind }) {
+  const { sensors, chartData, setChartData, devices, setDevices, windThreshold } = useData();
   const [controlling, setControlling] = useState({});
   const [toast, setToast] = useState(null);
+
+  // Tìm thiết bị Đèn 4 (Đèn cảnh báo)
+  const alertDevice = devices.find((d) => d.id === 4 || d.device_type === 'ALERT_LIGHT') || {
+    id: 4,
+    name: 'Đèn cảnh báo',
+    state: 'OFF'
+  };
+  const threshold = windThreshold || 300;
+  const isAlerting = alertDevice.state === 'ALERT' || Number(sensors.wind || 0) > threshold;
 
   // Tự động đóng thông báo lỗi sau 4 giây
   useEffect(() => {
@@ -113,7 +122,7 @@ export default function Dashboard() {
       return {
         tempDomain: [25, 35],
         humDomain: [60, 80],
-        lightDomain: [0, 100]
+        lightDomain: [0, 1000]
       };
     }
 
@@ -135,10 +144,10 @@ export default function Dashboard() {
     const humHigh = Math.ceil(maxH + 2);
 
     // Khoảng trục Y cho Ánh sáng (Lux)
-    let minL = lights.length ? Math.min(...lights) : 10;
-    let maxL = lights.length ? Math.max(...lights) : 50;
-    const lightLow = Math.max(0, Math.floor(minL - 5));
-    const lightHigh = Math.ceil(maxL + 15);
+    let minL = lights.length ? Math.min(...lights) : 0;
+    let maxL = lights.length ? Math.max(...lights) : 1000;
+    const lightLow = Math.max(0, Math.floor(minL - 30));
+    const lightHigh = Math.ceil(maxL + 30);
 
     return {
       tempDomain: [tempLow, tempHigh],
@@ -154,7 +163,7 @@ export default function Dashboard() {
 
   // Tính toán phần trăm thanh tiến trình cho Ánh sáng
   const lightVal = Number(sensors.light || 0);
-  const lightPercent = Math.min(100, Math.max(0, (lightVal / 100) * 100));
+  const lightPercent = Math.min(100, Math.max(0, (lightVal / 1000) * 100));
 
   // KHỐI 6: GIAO DIỆN HIỂN THỊ 
   return (
@@ -179,8 +188,8 @@ export default function Dashboard() {
         {/* 6.1. Header Tiêu đề trang */}
         <Header title="Hệ Thống IoT" subtitle="Theo dõi và điều khiển thiết bị thời gian thực" />
 
-        {/* 6.2. KHỐI 3 THẺ CẢM BIẾN TRÊN CÙNG (SENSOR WIDGET CARDS) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* 6.2. KHỐI 4 THẺ CẢM BIẾN TRÊN CÙNG (SENSOR WIDGET CARDS - ĐỀ LẺ) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           
           {/* THẺ 1: NHIỆT ĐỘ (°C) */}
           <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
@@ -196,20 +205,17 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-3">
-              {/* Thanh tiến trình nhiệt độ */}
               <div className="w-full bg-amber-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
                   className="bg-gradient-to-r from-amber-400 to-amber-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
                   style={{ width: `${tempPercent}%` }}
                 ></div>
               </div>
-
               <div className="text-[10px] text-slate-400 flex items-center justify-between">
                 <span className="flex items-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block mr-1"></span>
                   Cập nhật: {formatTime(sensors.timestamp)}
                 </span>
-                {/* <span className="font-mono font-bold text-amber-600/80">Max 50°C</span> */}
               </div>
             </div>
           </div>
@@ -228,14 +234,12 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-3">
-              {/* Thanh tiến trình độ ẩm */}
               <div className="w-full bg-blue-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
                   className="bg-gradient-to-r from-blue-400 to-blue-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
                   style={{ width: `${humPercent}%` }}
                 ></div>
               </div>
-
               <div className="text-[10px] text-slate-400 flex items-center justify-between">
                 <span className="flex items-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block mr-1"></span>
@@ -250,32 +254,22 @@ export default function Dashboard() {
           <div className="bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm card-hover flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Ánh sáng
-                </span>
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md">
-                  lux
-                </span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ánh sáng</span>
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md">lux</span>
               </div>
               <div className="flex items-baseline space-x-1 mt-2">
-                <span className="text-3xl font-extrabold text-slate-800 tracking-tight">
-                  {sensors.light}
-                </span>
-                <span className="text-xs font-bold text-emerald-500">
-                  lux
-                </span>
+                <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{sensors.light}</span>
+                <span className="text-xs font-bold text-emerald-500">lux</span>
               </div>
             </div>
 
             <div className="mt-3">
-              {/* Thanh tiến trình ánh sáng */}
               <div className="w-full bg-emerald-100/60 h-2 rounded-full overflow-hidden mb-2">
                 <div
                   className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
                   style={{ width: `${lightPercent}%` }}
                 ></div>
               </div>
-
               <div className="text-[10px] text-slate-400 flex items-center justify-between">
                 <span className="flex items-center">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1"></span>
@@ -285,15 +279,66 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* THẺ 4: TỐC ĐỘ GIÓ (km/h) - CÓ NÚT BẤM CHUYỂN QUA PAGE DASHBOARD GIÓ RIÊNG BIỆT */}
+          <div
+            onClick={() => onNavigateToWind && onNavigateToWind()}
+            className={`p-4.5 rounded-2xl border transition-all duration-300 shadow-sm card-hover flex flex-col justify-between cursor-pointer group hover:ring-2 hover:ring-purple-400/40 ${
+              isAlerting
+                ? 'bg-rose-50/70 border-rose-400 ring-2 ring-rose-400/30'
+                : 'bg-white border-slate-100'
+            }`}
+            title="Nhấn để mở Trang Dashboard Tốc Độ Gió Riêng Biệt"
+          >
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition-colors">
+                  Tốc độ gió ↗
+                </span>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
+                  isAlerting ? 'bg-rose-600 text-white animate-pulse' : 'bg-purple-50 text-purple-600'
+                }`}>
+                  {isAlerting ? `CẢNH BÁO (>${threshold})` : 'km/h'}
+                </span>
+              </div>
+              <div className="flex items-baseline space-x-1 mt-2">
+                <span className={`text-3xl font-extrabold tracking-tight ${
+                  isAlerting ? 'text-rose-600' : 'text-slate-800'
+                }`}>
+                  {sensors.wind !== undefined ? sensors.wind : 0}
+                </span>
+                <span className="text-xs font-bold text-purple-600">km/h</span>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <div className="w-full bg-purple-100/60 h-2 rounded-full overflow-hidden mb-2">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out shadow-xs ${
+                    Number(sensors.wind || 0) > threshold
+                      ? 'bg-gradient-to-r from-purple-500 to-rose-600'
+                      : 'bg-gradient-to-r from-purple-400 to-purple-600'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, (Number(sensors.wind || 0) / 500) * 100))}%` }}
+                ></div>
+              </div>
+              <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                <span className="flex items-center text-purple-600 font-semibold group-hover:underline">
+                  Xem Dashboard Gió ➜
+                </span>
+                <span className="font-mono font-bold text-purple-600/80">{sensors.wind || 0} km/h</span>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* 6.3. KHỐI ĐỒ THỊ XU HƯỚNG CẢM BIẾN (SENSOR TREND CHART) */}
+        {/* 6.3. KHỐI ĐỒ THỊ XU HƯỚNG CẢM BIẾN (3 ĐƯỜNG TRUYỀN THỐNG NHIỆT ĐỘ - ĐỘ ẨM - ÁNH SÁNG) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-5">
-          <h2 className="text-sm font-bold text-slate-800 mb-3">Xu hướng Cảm biến</h2>
+          <h2 className="text-sm font-bold text-slate-800 mb-3">Xu hướng Cảm biến (Nhiệt độ - Độ ẩm - Ánh sáng)</h2>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 25, left: 10, bottom: 0 }}>
-                {/* Định nghĩa Gradient chuyển màu bóng mờ đổ dưới chân các đường đồ thị */}
                 <defs>
                   <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={SENSOR_COLORS.temperature.hex} stopOpacity={0.2} />
@@ -309,13 +354,9 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 
-                {/* Lưới đồ thị nét đứt */}
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                
-                {/* Trục X hiển thị Mốc thời gian */}
                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={15} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 
-                {/* Trục Y cho Nhiệt độ (°C) nằm bên TẬP TRÁI */}
                 <YAxis
                   yAxisId="temp"
                   type="number"
@@ -328,7 +369,6 @@ export default function Dashboard() {
                   tickFormatter={(val) => `${Number(val).toFixed(0)}°C`}
                 />
 
-                {/* Trục Y cho Độ ẩm (%) nằm bên TẬP PHẢI */}
                 <YAxis
                   yAxisId="hum"
                   type="number"
@@ -341,15 +381,12 @@ export default function Dashboard() {
                   tickFormatter={(val) => `${Number(val).toFixed(0)}%`}
                 />
 
-                {/* Trục Y ẩn cho Ánh sáng (Lx) - Đảo ngược theo yêu cầu: khi che tối / giá trị tăng thì đường đi xuống */}
                 <YAxis
                   yAxisId="light"
                   hide={true}
                   domain={lightDomain}
-                  reversed={true}
                 />
 
-                {/* Khung chú thích thông số khi di chuột vào */}
                 <Tooltip
                   contentStyle={{ 
                     backgroundColor: '#ffffff', 
@@ -359,24 +396,20 @@ export default function Dashboard() {
                     boxShadow: '0 8px 12px -3px rgba(0,0,0,0.08)' }}
                 />
                 
-                {/* Chú thích màu sắc tên đường đồ thị (Legend) */}
                 <Legend
                   wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                   iconType="line"
                 />
 
-                {/* 3 Đường Sóng */}
                 <Area
                   yAxisId="hum"
                   name="Độ ẩm (%)"
                   type="natural"
                   dataKey="humidity"
-                  // Màu sắc đường đồ thị
                   stroke={SENSOR_COLORS.humidity.hex}
                   strokeWidth={2.5}
                   fill="url(#humGradient)"
                   dot={false}
-                  // Tạo chấm tròn khi di chuột vào 
                   activeDot={{ r: 5, fill: SENSOR_COLORS.humidity.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
@@ -389,7 +422,6 @@ export default function Dashboard() {
                   strokeWidth={2.5}
                   fill="url(#tempGradient)"
                   dot={false}
-                  // Tạo chấm tròn khi di chuột vào 
                   activeDot={{ r: 5, fill: SENSOR_COLORS.temperature.hex, stroke: '#ffffff', strokeWidth: 2 }}
                   isAnimationActive={true}
                 />
@@ -403,7 +435,6 @@ export default function Dashboard() {
                   fill="url(#lightGradient)"
                   dot={false}
                   activeDot={{ r: 5, fill: SENSOR_COLORS.light.hex, stroke: '#ffffff', strokeWidth: 2 }}
-                  baseValue={lightDomain[1]}
                   isAnimationActive={true}
                 />
               </AreaChart>
@@ -411,83 +442,88 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 6.4. KHỐI NÚT ĐIỀU KHIỂN THIẾT BỊ (CONTROL DEVICES SECTION) */}
-        <div>
-          <h2 className="text-sm font-bold text-slate-800 mb-3">Thiết bị điều khiển</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {devices.map((device) => {
+        {/* 6.4. KHỐI THIẾT BỊ ĐIỀU KHIỂN & ĐÈN CẢNH BÁO (4 CỘT NẰM CÙNG NHAU) */}
+        <div className="mb-2">
+          <h2 className="text-sm font-bold text-slate-800 mb-2">Thiết bị & Cảnh báo</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* 3 ĐÈN ĐIỀU KHIỂN */}
+            {devices.filter((d) => d.id !== 4 && d.device_type !== 'ALERT_LIGHT').map((device) => {
               const isOn = device.state === 'ON';
               const isLoading = device.state === 'LOADING' || controlling[device.id];
 
               return (
                 <div
                   key={device.id}
-                  className={`p-4.5 rounded-2xl transition-all duration-300 flex items-center justify-between shadow-sm ${
+                  className={`p-3.5 rounded-2xl transition-all duration-300 flex items-center justify-between shadow-xs ${
                     isLoading
-                      ? 'bg-amber-50/70 border-2 border-amber-400 ring-2 ring-amber-300/30'
+                      ? 'bg-amber-50/70 border border-amber-300'
                       : isOn
-                      ? 'bg-white border-2 border-blue-500 ring-2 ring-blue-500/10'
+                      ? 'bg-white border-2 border-blue-500'
                       : 'bg-white border border-slate-100'
                   }`}
                 >
-                  {/* Tên và Trạng thái thiết bị */}
                   <div>
-                    <h3 className="font-bold text-slate-800 text-base">{device.name}</h3>
-                    <p
-                      className={`text-[11px] font-bold tracking-wider mt-1 flex items-center ${
-                        isLoading
-                          ? 'text-amber-600'
-                          : isOn
-                          ? 'text-blue-500'
-                          : 'text-slate-400'
-                      }`}
-                    >
-                      {isLoading ? (
-                        <>
-                          <svg className="animate-spin mr-1.5 h-3.5 w-3.5 text-amber-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>ĐANG XỬ LÝ... (LOADING)</span>
-                        </>
-                      ) : isOn ? (
-                        'ĐANG HOẠT ĐỘNG'
-                      ) : (
-                        'ĐANG TẮT'
-                      )}
+                    <h3 className="font-bold text-slate-800 text-sm">{device.name}</h3>
+                    <p className={`text-[11px] font-bold mt-0.5 ${isLoading ? 'text-amber-600' : isOn ? 'text-blue-500' : 'text-slate-400'}`}>
+                      {isLoading ? 'ĐANG TẢI...' : isOn ? 'BẬT' : 'TẮT'}
                     </p>
                   </div>
 
-                  {/* Nút bấm Công tắc Gạt 3 nấc: OFF (trái) - LOADING (giữa) - ON (phải) */}
                   <button
                     onClick={() => handleToggleDevice(device)}
                     disabled={isLoading}
-                    title={isLoading ? 'Đang chuyển đổi trạng thái...' : (isOn ? 'Nhấn để tắt thiết bị' : 'Nhấn để bật thiết bị')}
-                    className={`w-14 h-8 flex items-center rounded-full p-1 transition-all duration-300 ${
-                      isLoading
-                        ? 'bg-amber-400 justify-center cursor-wait shadow-inner'
-                        : isOn
-                        ? 'bg-blue-500 justify-end cursor-pointer shadow-sm hover:bg-blue-600'
-                        : 'bg-slate-200 justify-start cursor-pointer hover:bg-slate-300'
+                    title={isLoading ? 'Đang chuyển đổi trạng thái...' : (isOn ? 'Tắt' : 'Bật')}
+                    className={`w-13 h-7 flex items-center rounded-full p-1 transition-all cursor-pointer ${
+                      isLoading ? 'bg-amber-400 justify-center' : isOn ? 'bg-blue-500 justify-end' : 'bg-slate-200 justify-start'
                     }`}
                   >
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center transition-all duration-300 ${
-                      isLoading ? 'scale-95' : 'scale-100'
-                    }`}>
-                      {isLoading && (
-                        <svg className="animate-spin h-3.5 w-3.5 text-amber-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      )}
-                    </div>
+                    <div className="w-5 h-5 bg-white rounded-full shadow-xs"></div>
                   </button>
                 </div>
               );
             })}
+
+            {/* THẺ ĐÈN 4 CẢNH BÁO NẰM CÙNG HÀNG VỚI 3 ĐÈN TRÊN */}
+            <div
+              className={`p-3.5 rounded-2xl transition-all duration-300 flex items-center justify-between shadow-xs ${
+                isAlerting
+                  ? 'alert-blink border-2 border-rose-500 bg-rose-50/80 shadow-rose-200'
+                  : 'bg-white border border-slate-100'
+              }`}
+            >
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <h3 className="font-bold text-slate-800 text-sm">Đèn 4</h3>
+                  <span className="text-[10px] text-slate-400 font-mono">(IO15)</span>
+                </div>
+                <p className={`text-[11px] font-bold mt-0.5 flex items-center ${isAlerting ? 'text-rose-600' : 'text-slate-400'}`}>
+                  {isAlerting ? (
+                    <>
+                      <span className="relative flex h-2.5 w-2.5 mr-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+                      </span>
+                      <span className="font-extrabold animate-pulse">ĐANG NHÁY CẢNH BÁO</span>
+                    </>
+                  ) : (
+                    <span>TẮT</span>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-end">
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold rounded-lg ${
+                  isAlerting ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {isAlerting ? 'ALERT' : 'TỰ ĐỘNG'}
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -3,8 +3,10 @@ import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { DataProvider } from './context/DataContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import WindDashboard from './pages/WindDashboard';
 import SensorHistory from './pages/SensorHistory';
 import DeviceHistory from './pages/DeviceHistory';
+import AlertStats from './pages/AlertStats';
 import Profile from './pages/Profile';
 
 function MainApp() {
@@ -27,13 +29,19 @@ function MainApp() {
 
       <main className="flex-1 overflow-hidden relative">
         <div className={`h-full w-full ${activeTab === '/' ? 'block' : 'hidden'}`}>
-          <Dashboard />
+          <Dashboard onNavigateToWind={() => handleTabChange('/wind-dashboard')} />
+        </div>
+        <div className={`h-full w-full ${activeTab === '/wind-dashboard' ? 'block' : 'hidden'}`}>
+          <WindDashboard onNavigateBack={() => handleTabChange('/')} />
         </div>
         <div className={`h-full w-full ${activeTab === '/sensor-history' ? 'block' : 'hidden'}`}>
           <SensorHistory />
         </div>
         <div className={`h-full w-full ${activeTab === '/device-history' ? 'block' : 'hidden'}`}>
           <DeviceHistory />
+        </div>
+        <div className={`h-full w-full ${activeTab === '/alert-stats' ? 'block' : 'hidden'}`}>
+          <AlertStats isActive={activeTab === '/alert-stats'} />
         </div>
         <div className={`h-full w-full ${activeTab === '/profile' ? 'block' : 'hidden'}`}>
           <Profile />

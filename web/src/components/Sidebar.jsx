@@ -4,8 +4,10 @@ import avatarImg from '../assets/avatar.png';
 export default function Sidebar({ activeTab = '/', onTabChange }) {
   const navItems = [
     { path: '/', label: 'Dashboard' },
+    { path: '/wind-dashboard', label: 'Dashboard Gió' },
     { path: '/sensor-history', label: 'Lịch sử cảm biến' },
     { path: '/device-history', label: 'Lịch sử thiết bị' },
+    { path: '/alert-stats', label: 'Thống kê cảnh báo' },
     { path: '/profile', label: 'Profile' },
   ];
 
