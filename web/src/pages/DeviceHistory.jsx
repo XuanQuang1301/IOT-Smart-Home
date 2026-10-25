@@ -256,10 +256,20 @@ export default function DeviceHistory() {
     );
   };
 
-  // Render Nhãn (Badge) Trạng thái thực thi (Thành công / Đang xử lý / Thất bại)
+  // Render Nhãn (Badge) Trạng thái thực thi (Thành công / Đang xử lý / Cảnh báo / Thất bại)
   const renderStatusBadge = (statusStr) => {
     const isSuccess = statusStr === 'SUCCESS' || statusStr === 'SUCCESSFUL';
     const isPending = statusStr === 'PENDING' || statusStr === 'LOADING';
+    const isAlert = statusStr === 'ALERT';
+
+    if (isAlert) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/60 shadow-2xs">
+          <span className="w-1.5 h-1.5 rounded-full mr-1 bg-rose-500 animate-ping"></span>
+          Cảnh báo
+        </span>
+      );
+    }
 
     if (isPending) {
       return (
@@ -305,9 +315,9 @@ export default function DeviceHistory() {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
 
-      if (sortConfig.key === 'device_id') {
-        aVal = parseInt(aVal, 10) || 0;
-        bVal = parseInt(bVal, 10) || 0;
+      if (sortConfig.key === 'device_name' || sortConfig.key === 'device_id') {
+        aVal = (a.device_name || (devices.find(d => d.id === a.device_id)?.name) || `Thiết bị ${a.device_id}`).toLowerCase();
+        bVal = (b.device_name || (devices.find(d => d.id === b.device_id)?.name) || `Thiết bị ${b.device_id}`).toLowerCase();
       } else if (sortConfig.key === 'created_at') {
         aVal = new Date(aVal).getTime() || 0;
         bVal = new Date(bVal).getTime() || 0;
@@ -382,20 +392,21 @@ export default function DeviceHistory() {
               </select>
             </div>
 
-            {/* Trạng thái thực thi */}
-            <div className="w-full sm:w-32 shrink-0">
-              <label className="block text-xs font-bold text-slate-900 mb-1">Trạng thái</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
-              >
-                <option value="">Tất cả</option>
-                <option value="SUCCESS">Thành công</option>
-                <option value="PENDING">Đang xử lý</option>
-                <option value="FAILED">Thất bại</option>
-              </select>
-            </div>
+              {/* Trạng thái thực thi */}
+              <div className="w-full sm:w-32 shrink-0">
+                <label className="block text-xs font-bold text-slate-900 mb-1">Trạng thái</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all cursor-pointer"
+                >
+                  <option value="">Tất cả</option>
+                  <option value="SUCCESS">Thành công</option>
+                  <option value="ALERT">Cảnh báo</option>
+                  <option value="PENDING">Đang xử lý</option>
+                  <option value="FAILED">Thất bại</option>
+                </select>
+              </div>
 
             {/* Bộ chọn Ngày & Giờ */}
             <div className="w-full sm:w-80 shrink-0">
@@ -547,8 +558,8 @@ export default function DeviceHistory() {
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 shadow-sm">
               <tr className="text-[10px] font-extrabold tracking-wider text-slate-700 uppercase">
-                <SortHeader title="ID THIẾT BỊ" sortKey="device_id" sortConfig={sortConfig} onSort={handleSort} className="w-[16%]" />
-                <th className="py-2.5 px-4 text-left text-[10px] font-extrabold tracking-wider text-slate-700 uppercase select-none w-[20%]">
+                <SortHeader title="TÊN THIẾT BỊ" sortKey="device_name" sortConfig={sortConfig} onSort={handleSort} className="w-[18%]" />
+                <th className="py-2.5 px-4 text-left text-[10px] font-extrabold tracking-wider text-slate-700 uppercase select-none w-[18%]">
                   HÀNH ĐỘNG
                 </th>
                 <th className="py-2.5 px-4 text-left text-[10px] font-extrabold tracking-wider text-slate-700 uppercase select-none w-[20%]">
@@ -570,14 +581,17 @@ export default function DeviceHistory() {
                   const timeStr = formatTimestamp(row.created_at);
                   const rowKey = `device-${row.id || idx}-${idx}`;
                   const isCopied = copiedId === rowKey;
+                  const devName = row.device_name || (devices.find((d) => d.id === row.device_id)?.name) || (row.device_id === 4 ? 'Đèn cảnh báo' : `Đèn ${row.device_id || row.id}`);
 
                   return (
                     <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-2.5 pl-11 pr-4 font-mono text-slate-600 text-xs truncate">{row.device_id || row.id}</td>
+                      <td className="py-2.5 px-4 font-bold text-slate-800 text-xs truncate">
+                        {devName}
+                      </td>
                       <td className="py-2.5 px-4 truncate">{renderActionBadge(row.action)}</td>
                       <td className="py-2.5 px-4 truncate">{renderStatusBadge(row.status)}</td>
                       <td className="py-2.5 px-4 font-semibold text-slate-700 text-xs truncate">
-                        {'Đặng Xuân Quang'}
+                        {row.user_name || 'Đặng Xuân Quang'}
                       </td>
                       <td className="py-2.5 px-4 text-right font-mono text-[11px] text-slate-500 whitespace-nowrap">
                         <div className="inline-flex items-center justify-end space-x-1.5">

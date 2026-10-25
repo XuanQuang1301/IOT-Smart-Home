@@ -35,6 +35,18 @@ export const SENSOR_COLORS = {
     progressBar: 'bg-gradient-to-r from-emerald-400 to-emerald-500', // Gradient thanh tiến trình
     progressTrack: 'bg-emerald-100/60', // Màu nền thanh tiến trình
     dotBg: 'bg-emerald-400' // Dấu chấm trạng thái
+  },
+  // Cảm biến Tốc độ gió (Đề lẻ)
+  wind: {
+    hex: '#8b5cf6', // Tím tím hiện đại
+    bgLight: 'bg-purple-50',
+    textMain: 'text-purple-500',
+    textDark: 'text-purple-600',
+    textDarker: 'text-purple-700',
+    border: 'border-purple-200/60',
+    progressBar: 'bg-gradient-to-r from-purple-400 to-purple-600',
+    progressTrack: 'bg-purple-100/60',
+    dotBg: 'bg-purple-500'
   }
 };
 
@@ -53,10 +65,17 @@ export const DEVICE_COLORS = {
     text: 'text-slate-400', // Màu chữ trạng thái OFF
     bgBtn: 'bg-slate-200', // Màu nền công tắc tắt
     cardBorder: 'border border-slate-100' // Khung thẻ viền xám mỏng
+  },
+  // Trạng thái Cảnh báo (ALERT)
+  alert: {
+    main: '#ef4444',
+    text: 'text-rose-600',
+    bgBtn: 'bg-rose-500',
+    cardBorder: 'border-2 border-rose-500 ring-2 ring-rose-500/20'
   }
 };
 
-// 3. Mã màu Kết quả thực thi trong Bảng Nhật ký (Thành công / Thất bại)
+// 3. Mã màu Kết quả thực thi trong Bảng Nhật ký (Thành công / Thất bại / Cảnh báo)
 export const STATUS_COLORS = {
   // Thực thi Thành công (SUCCESS)
   success: {
@@ -71,5 +90,13 @@ export const STATUS_COLORS = {
     text: 'text-rose-600', // Màu chữ
     border: 'border-rose-200/60', // Viền mỏng
     dot: 'bg-rose-500' // Dấu chấm đỏ cảnh báo
+  },
+  // Trạng thái Cảnh báo tự động (ALERT)
+  alert: {
+    bg: 'bg-rose-50',
+    text: 'text-rose-600',
+    border: 'border-rose-200/60',
+    dot: 'bg-rose-500'
   }
 };
+

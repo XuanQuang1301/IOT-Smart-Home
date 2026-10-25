@@ -6,6 +6,7 @@ const { initDatabase } = require('./config/db');
 const { getRealtimeSensor, getSensorHistory } = require('./controllers/sensorController');
 const { getDevicesStatus, controlDevice, getActionsHistory } = require('./controllers/deviceController');
 const { getUserProfile, updateUserProfile } = require('./controllers/userController');
+const { getAlertSettings, updateAlertSetting, getAlertStats } = require('./controllers/alertController');
 const { initMqtt } = require('./services/mqttService');
 
 const app = express();
@@ -23,6 +24,11 @@ app.get('/api/v1/sensor/history', getSensorHistory);
 app.get('/api/v1/devices/status', getDevicesStatus);
 app.post('/api/v1/devices/:id/control', controlDevice);
 app.get('/api/v1/actions/history', getActionsHistory);
+
+// Alert Endpoints
+app.get('/api/v1/alerts/settings', getAlertSettings);
+app.put('/api/v1/alerts/settings/:sensorId', updateAlertSetting);
+app.get('/api/v1/alerts/stats', getAlertStats);
 
 // Profile Endpoints
 app.get('/api/v1/user/profile', getUserProfile);

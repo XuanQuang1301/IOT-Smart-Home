@@ -66,16 +66,32 @@ INSERT INTO `users` (`id`, `username`, `password`, `full_name`, `role`) VALUES
 (1, 'admin', '$2b$10$e8wWwR3y1FvN0R1y...hash', 'Đặng Xuân Quang', 'ADMIN')
 ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
 
--- Devices Seed (Đèn 1, Đèn 2, Đèn 3)
+-- Devices Seed (Đèn 1, Đèn 2, Đèn 3, Đèn cảnh báo 4)
 INSERT INTO `devices` (`id`, `name`, `device_type`, `pin`, `state`) VALUES
 (1, 'Đèn 1', 'LIGHT', 'D1', 'ON'),
 (2, 'Đèn 2', 'LIGHT', 'D2', 'OFF'),
-(3, 'Đèn 3', 'LIGHT', 'D7', 'OFF')
+(3, 'Đèn 3', 'LIGHT', 'D7', 'OFF'),
+(4, 'Đèn cảnh báo', 'ALERT_LIGHT', 'IO15', 'OFF')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
--- Sensors Seed (Nhiệt độ = 1, Độ ẩm = 2, Ánh sáng = 3)
+-- Sensors Seed (Nhiệt độ = 1, Độ ẩm = 2, Ánh sáng = 3, Tốc độ gió = 4)
 INSERT INTO `sensors` (`id`, `name`, `sensor_type`, `unit`, `pin`, `status`) VALUES
 (1, 'Nhiệt độ', 'TEMPERATURE', '°C', 'D5', 'ACTIVE'),
 (2, 'Độ ẩm', 'HUMIDITY', '%', 'D5', 'ACTIVE'),
-(3, 'Ánh sáng', 'LIGHT', 'lux', 'A0', 'ACTIVE')
+(3, 'Ánh sáng', 'LIGHT', 'lux', 'A0', 'ACTIVE'),
+(4, 'Tốc độ gió', 'WIND', 'km/h', 'SIM', 'ACTIVE')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
+-- 6. Table Alert_Settings (Ngưỡng cảnh báo theo cảm biến)
+CREATE TABLE IF NOT EXISTS `alert_settings` (
+  `sensor_id` INT PRIMARY KEY,
+  `threshold` DOUBLE NOT NULL,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_alert_settings_sensor` FOREIGN KEY (`sensor_id`) REFERENCES `sensors` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed Alert Settings (Mặc định ngưỡng gió = 300)
+INSERT INTO `alert_settings` (`sensor_id`, `threshold`) VALUES
+(4, 300)
+ON DUPLICATE KEY UPDATE `sensor_id` = `sensor_id`;
+

@@ -4,12 +4,23 @@ const { getLatestValues } = require('../services/mqttService');
 // GET /api/v1/sensor/realtime
 async function getRealtimeSensor(req, res) {
   try {
+    // 1. Ưu tiên lấy ngay từ RAM (giá trị mới nhất ESP8266 vừa gửi qua MQTT) để phản hồi 0ms
+    const latest = getLatestValues();
+    if (latest && latest.temperature !== undefined) {
+      return res.json({
+        status: 'success',
+        data: latest
+      });
+    }
+
+    // 2. Dự phòng: Truy vấn từ Database nếu biến RAM chưa có dữ liệu
     const [rows] = await pool.query(`
       SELECT 
-        (SELECT value FROM sensors_data WHERE sensor_id = 1 ORDER BY created_at DESC, id DESC LIMIT 1) as temp,
-        (SELECT value FROM sensors_data WHERE sensor_id = 2 ORDER BY created_at DESC, id DESC LIMIT 1) as hum,
-        (SELECT value FROM sensors_data WHERE sensor_id = 3 ORDER BY created_at DESC, id DESC LIMIT 1) as light,
-        (SELECT created_at FROM sensors_data ORDER BY created_at DESC, id DESC LIMIT 1) as latest_time
+        (SELECT value FROM sensors_data WHERE sensor_id = 1 ORDER BY id DESC LIMIT 1) as temp,
+        (SELECT value FROM sensors_data WHERE sensor_id = 2 ORDER BY id DESC LIMIT 1) as hum,
+        (SELECT value FROM sensors_data WHERE sensor_id = 3 ORDER BY id DESC LIMIT 1) as light,
+        (SELECT value FROM sensors_data WHERE sensor_id = 4 ORDER BY id DESC LIMIT 1) as wind,
+        (SELECT created_at FROM sensors_data ORDER BY id DESC LIMIT 1) as latest_time
     `);
 
     if (rows.length > 0 && rows[0].temp !== null) {
@@ -19,6 +30,7 @@ async function getRealtimeSensor(req, res) {
           temperature: rows[0].temp,
           humidity: rows[0].hum,
           light: rows[0].light,
+          wind: rows[0].wind !== null ? rows[0].wind : 0,
           timestamp: rows[0].latest_time ? new Date(rows[0].latest_time).toISOString() : new Date().toISOString()
         }
       });
@@ -26,7 +38,7 @@ async function getRealtimeSensor(req, res) {
 
     return res.json({
       status: 'success',
-      data: getLatestValues()
+      data: latest
     });
   } catch (error) {
     console.error('Error fetching realtime sensor:', error);
@@ -49,25 +61,27 @@ async function getSensorHistory(req, res) {
     const value = req.query.value;
     const time = req.query.time;
 
-    // Chart dataset query
+    // Chart dataset query - Lấy chính xác 20 mốc thời gian mới nhất từ database
     if (req.query.deviceId || req.query.chart === 'true') {
       const [chartRows] = await pool.query(`
         SELECT 
           DATE_FORMAT(CONVERT_TZ(sd.created_at, @@session.time_zone, '+07:00'), '%H:%i:%s') as time,
-          MAX(CASE WHEN s.sensor_type = 'TEMPERATURE' OR s.id = 1 THEN sd.value END) as temperature,
-          MAX(CASE WHEN s.sensor_type = 'HUMIDITY' OR s.id = 2 THEN sd.value END) as humidity,
-          MAX(CASE WHEN s.sensor_type = 'LIGHT' OR s.id = 3 THEN sd.value END) as light
+          MAX(CASE WHEN sd.sensor_id = 1 THEN sd.value END) as temperature,
+          MAX(CASE WHEN sd.sensor_id = 2 THEN sd.value END) as humidity,
+          MAX(CASE WHEN sd.sensor_id = 3 THEN sd.value END) as light,
+          MAX(CASE WHEN sd.sensor_id = 4 THEN sd.value END) as wind
         FROM sensors_data sd
-        JOIN sensors s ON sd.sensor_id = s.id
-        GROUP BY time
-        ORDER BY MAX(sd.created_at) DESC
+        WHERE sd.id >= (SELECT COALESCE(MAX(id), 0) - 200 FROM sensors_data)
+        GROUP BY sd.created_at, time
+        ORDER BY sd.created_at DESC
         LIMIT ?
       `, [limit]);
 
       const chartData = chartRows.reverse().map(r => ({
-        temperature: r.temperature || 0,
-        humidity: r.humidity || 0,
-        light: r.light || 0,
+        temperature: r.temperature !== null ? r.temperature : 0,
+        humidity: r.humidity !== null ? r.humidity : 0,
+        light: r.light !== null ? r.light : 0,
+        wind: r.wind !== null ? r.wind : 0,
         time: r.time
       }));
 
